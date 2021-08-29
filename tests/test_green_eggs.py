@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from green_eggs import __version__
 
 
