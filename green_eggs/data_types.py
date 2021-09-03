@@ -5,26 +5,13 @@ import datetime
 from functools import partial, reduce
 import keyword
 import re
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Pattern,
-    Tuple,
-    Type,
-)
+from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, Pattern, Tuple, Type
 
 from green_eggs import constants as const
 
 _Badges = Dict[str, str]
 _bool_of_int_of = partial(reduce, lambda x, y: y(x), (int, bool))
-_camel_kebab_to_snake_pattern: Pattern[str] = re.compile(
-    r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|-+'
-)
+_camel_kebab_to_snake_pattern: Pattern[str] = re.compile(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|-+')
 _unescape_lookup: Dict[str, str] = {
     '\\': '\\',
     ':': ';',
@@ -95,24 +82,13 @@ class BaseTags(abc.ABC):
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        deprecated = {
-            field: kwargs.pop(field)
-            for field in cls.deprecated_fields
-            if field in kwargs
-        }
-        unhandled = {
-            field: kwargs.pop(field)
-            for field in set(kwargs.keys()) - set(f.name for f in fields(cls))
-        }
+        deprecated = {field: kwargs.pop(field) for field in cls.deprecated_fields if field in kwargs}
+        unhandled = {field: kwargs.pop(field) for field in set(kwargs.keys()) - set(f.name for f in fields(cls))}
 
         return dict(deprecated=deprecated, unhandled=unhandled, **kwargs)
 
     def model_data(self) -> Dict[str, Any]:
-        data = {
-            f.name: getattr(self, f.name)
-            for f in fields(self)
-            if f.name != 'msg_params'
-        }
+        data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != 'msg_params'}
         if isinstance(self, UserNoticeTags):
             data['msg_params'] = msg_params = dict()
             for f in fields(self.msg_params):
@@ -129,9 +105,7 @@ class TimestampedBaseTags(BaseTags, abc.ABC):
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(
-            int(kwargs['tmi_sent_ts']) / 1000
-        )
+        kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(int(kwargs['tmi_sent_ts']) / 1000)
 
         return super().prepare_data(**kwargs)
 
@@ -191,15 +165,11 @@ class UserMessageBaseTags(UserBaseTags, abc.ABC):
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        return dict(
-            user_id=int(kwargs.pop('user_id')), **super().prepare_data(**kwargs)
-        )
+        return dict(user_id=int(kwargs.pop('user_id')), **super().prepare_data(**kwargs))
 
 
 @dataclass
-class UserChatMessageBaseTags(
-    TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags, abc.ABC
-):
+class UserChatMessageBaseTags(TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags, abc.ABC):
     id: str
     room_id: str
 
@@ -227,9 +197,7 @@ class ClearChatTags(BaseTags):
                 kwargs[field] = int(kwargs[field])
 
         if 'tmi_sent_ts' in kwargs and kwargs['tmi_sent_ts'] is not None:
-            kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(
-                int(kwargs['tmi_sent_ts']) / 1000
-            )
+            kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(int(kwargs['tmi_sent_ts']) / 1000)
 
         return super().prepare_data(**kwargs)
 
@@ -256,9 +224,7 @@ class NoticeTags(BaseTags):
 @dataclass
 class PrivMsgTags(UserChatMessageBaseTags):
     # not sure what this is or is meant to represent, but twitch said so
-    bits_re: ClassVar[Pattern[str]] = re.compile(
-        r'(^|\s)(?P<emote_name>\D+)\d+(\s|$)', flags=re.IGNORECASE
-    )
+    bits_re: ClassVar[Pattern[str]] = re.compile(r'(^|\s)(?P<emote_name>\D+)\d+(\s|$)', flags=re.IGNORECASE)
 
     bits: Optional[str] = None
     client_nonce: Optional[str] = None
@@ -412,9 +378,7 @@ class UserNoticeMessageParams(BaseTags):
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         if 'prior_gifter_anonymous' in kwargs:
-            kwargs['prior_gifter_anonymous'] = (
-                kwargs['prior_gifter_anonymous'] == 'true'
-            )
+            kwargs['prior_gifter_anonymous'] = kwargs['prior_gifter_anonymous'] == 'true'
 
         return dict(
             **{
@@ -508,13 +472,9 @@ class HasTags(HandleAble, abc.ABC):
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:
-        tags_type: Type[BaseTags] = next(
-            f.type for f in fields(cls) if f.name == 'tags'
-        )
+        tags_type: Type[BaseTags] = next(f.type for f in fields(cls) if f.name == 'tags')
 
-        return super().from_match_dict(
-            tags=tags_type.from_raw_data(kwargs.pop('tags')), **kwargs
-        )
+        return super().from_match_dict(tags=tags_type.from_raw_data(kwargs.pop('tags')), **kwargs)
 
 
 @dataclass
@@ -563,9 +523,7 @@ class HostTarget(InChannel):
     def from_match_dict(cls, **kwargs) -> HandleAble:
         number_of_viewers = kwargs.pop('number_of_viewers', None)
         if number_of_viewers is not None:
-            number_of_viewers = (
-                None if number_of_viewers == '-' else int(number_of_viewers)
-            )
+            number_of_viewers = None if number_of_viewers == '-' else int(number_of_viewers)
         if kwargs['target'] == '-':
             kwargs['target'] = None
 

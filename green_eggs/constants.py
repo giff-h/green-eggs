@@ -17,17 +17,13 @@ USERNAME_REGEX = re.compile(rf'^@?{_user}$', flags=re.IGNORECASE)
 
 AUTH_EXPECT = 'auth'
 EXPECTED_AUTH_CODES = ['001', '002', '003', '004', '375', '372', '376']
-AUTH_EXPECT_PATTERN = re.compile(
-    rf'^:{_tmi} (?P<code>{"|".join(EXPECTED_AUTH_CODES)}) (?P<msg>.*)$'
-)
+AUTH_EXPECT_PATTERN = re.compile(rf'^:{_tmi} (?P<code>{"|".join(EXPECTED_AUTH_CODES)}) (?P<msg>.*)$')
 
 CAP_REQ_EXPECT = 'cap_req'
 CAP_REQ_MODES = ['commands', 'membership', 'tags']
 _cap_ack_part = rf'twitch\.tv/(?:{"|".join(CAP_REQ_MODES)})'
 # noinspection RegExpUnnecessaryNonCapturingGroup
-CAP_ACK_PATTERN = re.compile(
-    rf'^:{_tmi} CAP \* ACK :(?P<cap>(?:{_cap_ack_part} )*(?:{_cap_ack_part}))$'
-)
+CAP_ACK_PATTERN = re.compile(rf'^:{_tmi} CAP \* ACK :(?P<cap>(?:{_cap_ack_part} )*(?:{_cap_ack_part}))$')
 
 JOIN_EXPECT = 'join'
 EXPECTED_JOIN_CODES = ['353', '366']
@@ -39,12 +35,8 @@ PART_EXPECT_PATTERN = re.compile(rf'^{_user_tmi} PART #(?P<left>{_user})$')
 RECONNECT_PATTERN = re.compile(rf'^:{_tmi} RECONNECT$')
 
 _invoke_part = r'!?(?P<invoke>[a-z0-9]{1,15})'
-COMMAND_ADD_PATTERN = re.compile(
-    r'^!?(?P<invoke>[a-z0-9]{1,15}) +(?P<response>.+)$', flags=re.IGNORECASE
-)
-COMMAND_DELETE_PATTERN = re.compile(
-    r'^!?(?P<invoke>[a-z0-9]{1,15})$', flags=re.IGNORECASE
-)
+COMMAND_ADD_PATTERN = re.compile(r'^!?(?P<invoke>[a-z0-9]{1,15}) +(?P<response>.+)$', flags=re.IGNORECASE)
+COMMAND_DELETE_PATTERN = re.compile(r'^!?(?P<invoke>[a-z0-9]{1,15})$', flags=re.IGNORECASE)
 COMMAND_EDIT_PATTERN = re.compile(
     r'^!?(?P<invoke>[a-z0-9]{1,15})(?:>!?(?P<rename>[a-z0-9]+))?(?: +(?P<response>.+))?$',
     flags=re.IGNORECASE,
@@ -64,9 +56,7 @@ COMMAND_TIMER_PATTERNS = dict(
         r'^edit +response +!?(?P<invoke>[a-z0-9]{1,15}) +(?P<response>.+)$',
         flags=re.IGNORECASE,
     ),
-    stop_start=re.compile(
-        r'^(?P<action>stop|start) +!?(?P<invoke>[a-z0-9]{1,15})$', flags=re.IGNORECASE
-    ),
+    stop_start=re.compile(r'^(?P<action>stop|start) +!?(?P<invoke>[a-z0-9]{1,15})$', flags=re.IGNORECASE),
 )
 COMMAND_TIMER_HELP = '''
 New 1 minute timer on 5 seconds into the minute: "!{invoke} add 60/5 !discord Join the discord!"
@@ -80,26 +70,14 @@ Start or stop the repeat: "!{invoke} start !discord" "!{invoke} stop !discord"
 '''.strip()
 
 # Data patterns. Listed in decreasing order of approximate appearance percentage
-PRIVMSG_PATTERN = re.compile(
-    rf'^{_tags} {_user_tmi} PRIVMSG #(?P<where>{_user}) :(?P<message>.+)$'
-)
-JOIN_PART_PATTERN = re.compile(
-    rf'^{_user_tmi} (?P<action>JOIN|PART) #(?P<where>{_user})$'
-)
-CLEARCHAT_PATTERN = re.compile(
-    rf'^{_tags} :{_tmi} CLEARCHAT #(?P<where>{_user}) :(?P<who>{_user})$'
-)
-USERNOTICE_PATTERN = re.compile(
-    rf'^{_tags} :{_tmi} USERNOTICE #(?P<where>{_user})(?: :(?P<message>.+))?$'
-)
+PRIVMSG_PATTERN = re.compile(rf'^{_tags} {_user_tmi} PRIVMSG #(?P<where>{_user}) :(?P<message>.+)$')
+JOIN_PART_PATTERN = re.compile(rf'^{_user_tmi} (?P<action>JOIN|PART) #(?P<where>{_user})$')
+CLEARCHAT_PATTERN = re.compile(rf'^{_tags} :{_tmi} CLEARCHAT #(?P<where>{_user}) :(?P<who>{_user})$')
+USERNOTICE_PATTERN = re.compile(rf'^{_tags} :{_tmi} USERNOTICE #(?P<where>{_user})(?: :(?P<message>.+))?$')
 ROOMSTATE_PATTERN = re.compile(rf'^{_tags} :{_tmi} ROOMSTATE #(?P<where>{_user})$')
 USERSTATE_PATTERN = re.compile(rf'^{_tags} :{_tmi} USERSTATE #(?P<where>{_user})$')
-CLEARMSG_PATTERN = re.compile(
-    rf'^{_tags} :{_tmi} CLEARMSG #(?P<where>{_user}) :(?P<message>.+)$'
-)
-NOTICE_PATTERN = re.compile(
-    rf'^{_tags} :{_tmi} NOTICE #(?P<where>{_user}) :(?P<message>.+)$'
-)
+CLEARMSG_PATTERN = re.compile(rf'^{_tags} :{_tmi} CLEARMSG #(?P<where>{_user}) :(?P<message>.+)$')
+NOTICE_PATTERN = re.compile(rf'^{_tags} :{_tmi} NOTICE #(?P<where>{_user}) :(?P<message>.+)$')
 HOSTTARGET_PATTERN = re.compile(
     rf'^:{_tmi} HOSTTARGET #(?P<where>{_user}) :(?P<target>{_user}|-)(?: (?P<number_of_viewers>\d+|-))?$'
 )
@@ -107,12 +85,8 @@ HOSTTARGET_PATTERN = re.compile(
 CODE_353_PATTERN = re.compile(
     rf'^:(?P<who>{_user})\.{_tmi} 353 (?P=who) = #(?P<where>{_user}) :(?P<users>(?:{_user} )*(?:{_user}))$'
 )
-CODE_366_PATTERN = re.compile(
-    rf'^:(?P<who>{_user})\.{_tmi} 366 (?P=who) #(?P<where>{_user}) :End of /NAMES list$'
-)
-WHISPER_PATTERN = re.compile(
-    rf'^{_tags} {_user_tmi} WHISPER #(?P<where>{_user}) :(?P<message>.+)$'
-)
+CODE_366_PATTERN = re.compile(rf'^:(?P<who>{_user})\.{_tmi} 366 (?P=who) #(?P<where>{_user}) :End of /NAMES list$')
+WHISPER_PATTERN = re.compile(rf'^{_tags} {_user_tmi} WHISPER #(?P<where>{_user}) :(?P<message>.+)$')
 
 LINK_PERMIT_TIMEOUT = 60
 _domains = '|'.join(

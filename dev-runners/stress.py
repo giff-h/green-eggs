@@ -1,5 +1,7 @@
 import asyncio
 import collections
+import json
+from pathlib import Path
 import pprint
 from typing import Dict, Set, Type
 
@@ -14,8 +16,10 @@ unhandled_bits: Dict[Type[BaseTags], Dict[str, Set[str]]] = collections.defaultd
     lambda: collections.defaultdict(set)
 )
 
-username = ''
-token = ''
+secrets_file = Path(__file__).resolve().parent.parent / 'secrets.json'
+secrets = json.loads(secrets_file.read_text())
+username = secrets['username']
+token = secrets['token']
 
 
 def record_unhandled(tags: BaseTags):
@@ -26,9 +30,7 @@ def record_unhandled(tags: BaseTags):
 
 
 async def stress():
-    async with TwitchChatClient(
-        username=username, token=token, logger=logger
-    ) as client:
+    async with TwitchChatClient(username=username, token=token, logger=logger) as client:
         await client.join('LEC')
         await client.join('auronplay')
         await client.join('otplol_')
@@ -53,9 +55,7 @@ async def stress():
                         raise
                     except Exception as e:
                         print('Error handling matched message')
-                        print(
-                            f'- HandleAble type: {handle_type.__name__}\nRaw message: {raw!r}'
-                        )
+                        print(f'- HandleAble type: {handle_type.__name__}\nRaw message: {raw!r}')
                         print(f'- {e}')
                     else:
                         if isinstance(handle_able, HasTags):
@@ -79,10 +79,5 @@ if __name__ == '__main__':
         if task:
             task.cancel()
     finally:
-        pprint.pprint(
-            {
-                handle_able.__name__: dict(unhandled)
-                for handle_able, unhandled in unhandled_bits.items()
-            }
-        )
+        pprint.pprint({handle_able.__name__: dict(unhandled) for handle_able, unhandled in unhandled_bits.items()})
         loop.close()

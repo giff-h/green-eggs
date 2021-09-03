@@ -99,9 +99,8 @@ class TwitchChatClient:
         """
         Takes an `asyncio.Future` and expects it to resolve within `timeout` seconds.
 
-        This should be tasked, not awaited, as it's normal to set expectations
-        before you perform the action that results in the expectation, and
-        awaiting will time out before you attempt to perform the action.
+        This should be tasked, not awaited, as it's normal to set expectations before you perform the action that
+        results in the expectation, and awaiting will time out before you attempt to perform the action.
 
         :param asyncio.Future expectation: Can be any Future, coroutine, or other awaitable
         :param str label: An identifier for logging purposes on timeout
@@ -116,8 +115,8 @@ class TwitchChatClient:
 
     async def filter_expected(self, data: str) -> AsyncIterator[str]:
         """
-        A generator that takes raw websocket messages and only yields lines that weren't
-        expected, i.e. no expectation manager returned `True`.
+        A generator that takes raw websocket messages and only yields lines that weren't expected, i.e. no expectation
+        manager returned `True`.
 
         :param str data: Received value from `self.recv()`
         :return: Generator of messages for consumption
@@ -162,9 +161,7 @@ class TwitchChatClient:
         await asyncio.gather(*expects)
 
         expects = self.queue_expectations(const.CAP_REQ_EXPECT, *const.CAP_REQ_MODES)
-        await self.send(
-            'CAP REQ :' + ' '.join(f'twitch.tv/{mode}' for mode in const.CAP_REQ_MODES)
-        )
+        await self.send('CAP REQ :' + ' '.join(f'twitch.tv/{mode}' for mode in const.CAP_REQ_MODES))
         await asyncio.gather(*expects)
 
     async def is_connected(self) -> bool:
@@ -202,17 +199,13 @@ class TwitchChatClient:
             return False
 
         if channel in self.expectations.get(const.PART_EXPECT, tuple()):
-            self.logger.debug(
-                f'Attempted to join #{channel} but it was just left and is unconfirmed'
-            )
+            self.logger.debug(f'Attempted to join #{channel} but it was just left and is unconfirmed')
             if action_if_leaving == 'wait':
                 self.logger.debug('Waiting on leave confirmation then joining')
                 try:
                     await self.expectations[const.PART_EXPECT][channel]
                 except asyncio.TimeoutError:
-                    self.logger.warning(
-                        'Earlier leave did not succeed. Abandoning the join'
-                    )
+                    self.logger.warning('Earlier leave did not succeed. Abandoning the join')
                     return False
             elif action_if_leaving == 'raise':
                 self.logger.debug('Raising exception due to race condition')
@@ -249,9 +242,7 @@ class TwitchChatClient:
             return False
 
         if channel in self.expectations.get(const.JOIN_EXPECT, tuple()):
-            self.logger.debug(
-                f'Attempted to leave #{channel} but it was just joined and is unconfirmed'
-            )
+            self.logger.debug(f'Attempted to leave #{channel} but it was just joined and is unconfirmed')
             if action_if_joining == 'raise':
                 self.logger.debug('Raising exception due to race condition')
                 raise ChannelPresenceRaceCondition('Tried to leave while joining')
@@ -260,9 +251,7 @@ class TwitchChatClient:
                 try:
                     await self.expectations[const.JOIN_EXPECT][channel]
                 except asyncio.TimeoutError:
-                    self.logger.warning(
-                        'Earlier join did not succeed. Abandoning the leave'
-                    )
+                    self.logger.warning('Earlier join did not succeed. Abandoning the leave')
                     return False
             elif action_if_joining == 'abort':
                 self.logger.debug('Abandoning the leave')
@@ -316,15 +305,12 @@ class TwitchChatClient:
 
         return True
 
-    def queue_expectations(
-        self, category: str, *parts: str, timeout: int = 5
-    ) -> List[asyncio.Task]:
+    def queue_expectations(self, category: str, *parts: str, timeout: int = 5) -> List[asyncio.Task]:
         """
-        Tasks an expectation for each part of `parts` in the category, and puts the
-        `asyncio.Future` in `self.expectations[category][part]`.
+        Tasks an expectation for each part of `parts` in the category, and puts the `asyncio.Future` in
+        `self.expectations[category][part]`.
 
-        The resulting log, if the expectation times out, will be
-        `f'{category}:{part}'`.
+        The resulting log, if the expectation times out, will be `f'{category}:{part}'`.
 
         :param str category: Main category name
         :param str parts: Category part names
@@ -339,11 +325,7 @@ class TwitchChatClient:
             for part in parts:
                 category_dict[part] = asyncio.Future()
                 expects.append(
-                    asyncio.create_task(
-                        self.expect(
-                            category_dict[part], f'{category}:{part}', timeout=timeout
-                        )
-                    )
+                    asyncio.create_task(self.expect(category_dict[part], f'{category}:{part}', timeout=timeout))
                 )
 
         return expects
@@ -370,8 +352,8 @@ class TwitchChatClient:
 
     def resolve_expectations(self, category: str, *parts: str):
         """
-        Resolves and deletes the `asyncio.Future` in `self.expectations` by category and
-        parts, then deletes the category if it's empty after.
+        Resolves and deletes the `asyncio.Future` in `self.expectations` by category and parts, then deletes the
+        category if it's empty after.
 
         :param str category: Main category name
         :param str parts: Category part names
@@ -388,10 +370,8 @@ class TwitchChatClient:
         """
         Sends data to the server.
 
-        Adds carriage return for IRC.
-
-        If the data is sensitive, i.e. PASS login, then set `redact_log` and
-        that will be the logged value.
+        If the data is sensitive, i.e. PASS login, then set `redact_log` and that will be the logged value. Adds its own
+        carriage return for IRC.
 
         :param str data: Message to send
         :param redact_log: Optional value to log instead of the data

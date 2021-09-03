@@ -1,0 +1,70 @@
+# -*- coding: utf-8 -*-
+from types import TracebackType
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from urllib.parse import urlencode
+
+import aiohttp
+
+_empty: Any = object()
+UrlParams = Union[
+    Mapping[Any, Any],
+    Mapping[Any, Sequence[Any]],
+    Sequence[Tuple[Any, Any]],
+    Sequence[Tuple[Any, Sequence[Any]]],
+]
+
+
+def exclude_non_empty(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not _empty}
+
+
+class TwitchApi:
+    _base_url = 'https://api.twitch.tv/helix/'
+
+    def __init__(self, *, client_id: str, token: str):
+        headers = {'Client-ID': client_id, 'Authorization': f'Bearer {token}'}
+        self.session = aiohttp.ClientSession(headers=headers)
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: UrlParams = _empty,
+        data: Optional[Dict[str, Any]] = None,
+        raise_for_status: bool = True,
+    ) -> Any:
+        """
+        Executes a request on helix.
+
+        :param str method: The HTTP method
+        :param str path: The helix API path
+        :param params: The params for `urlencode`
+        :param data: The data for the request body
+        :param bool raise_for_status:
+        :return:
+        """
+        url = self._base_url + path
+        if params is not _empty and len(params):
+            url += f'?{urlencode(params, doseq=True)}'
+
+        async with self.session.request(method, url, json=data) as response:
+            if raise_for_status:
+                response.raise_for_status()
+            response_data = await response.json()
+
+        return response_data
+
+    async def __aenter__(self) -> 'TwitchApi':
+        self.session = await self.session.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ):
+        await self.session.__aexit__(exc_type, exc_val, exc_tb)
+
+    # API endpoint functions

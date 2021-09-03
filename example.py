@@ -32,9 +32,7 @@ def roll(message):
 
             if count > 1:
                 result = [random.randint(1, sides) for _ in range(count)]
-                result_display = (
-                    ', '.join(map(str, result[:-1])) + f', and {result[-1]}'
-                )
+                result_display = ', '.join(map(str, result[:-1])) + f', and {result[-1]}'
                 total = sum(result)
                 return response + f'{result_display} for a total of {total}'
 
