@@ -3,8 +3,9 @@ import random
 import re
 
 from green_eggs import ChatBot
+from green_eggs.data_types import PrivMsg
 
-bot = ChatBot(username='', token='')
+bot = ChatBot(channel='')
 
 bot.register_basic_commands(
     {
@@ -15,26 +16,28 @@ bot.register_basic_commands(
 
 
 @bot.register_command('!roll')
-def roll(message):
-    dice_regex = re.compile(r'(?P<count>\d+)d(?P<sides>\d+)')
-    spec = message.args[0] if len(message.args) else '1d20'
+def roll(message: PrivMsg):
+    dice_regex = re.compile(r'(?P<count>\d*)d(?P<sides>\d+)')
+    spec = message.words[1] if len(message.words) >= 1 else '1d20'
     match = dice_regex.match(spec)
     if match is not None:
-        count = int(match.group('count'))
+        count = int(match.group('count') or 1)
         sides = int(match.group('sides'))
 
-        if sides > 1:
-            response = f'{message.sender_display} rolled {count} d{sides} and got '
+        if count > 0 and sides > 1:
+            response = f'{message.tags.display_name} rolled {count} d{sides} and got '
+            roll_result = [random.randint(1, sides) for _ in range(count)]
+            total = sum(roll_result)
 
             if count == 1:
-                result = random.randint(1, sides)
-                return response + str(result)
+                response += str(total)
+            elif count == 2:
+                response += ' and '.join(map(str, roll_result)) + f' for a total of {total}'
+            else:
+                result_display = ', '.join(map(str, roll_result[:-1])) + f', and {roll_result[-1]}'
+                response += f'{result_display} for a total of {total}'
 
-            if count > 1:
-                result = [random.randint(1, sides) for _ in range(count)]
-                result_display = ', '.join(map(str, result[:-1])) + f', and {result[-1]}'
-                total = sum(result)
-                return response + f'{result_display} for a total of {total}'
+            return response
 
         return 'You need to roll at least 1 die with at least 2 sides'
 
@@ -44,10 +47,14 @@ def roll(message):
 @bot.register_command('!calm')
 async def calm(channel):
     await channel.send('EVERYBODY PANIC!')
-    await channel.send('=============\\o\\')
-    await channel.send('/o/=============')
+    await channel.send('/me =============\\o\\')
+    await channel.send('/me /o/=============')
 
 
 @bot.register_caster_command('!caster')
 def caster(name, link, game):
     return f'We love {name}, check them out at {link} for fun times such as {game}'
+
+
+if __name__ == '__main__':
+    bot.run(username='', token='')

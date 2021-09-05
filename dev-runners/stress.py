@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import asyncio
 import collections
 import json
@@ -7,6 +8,7 @@ from typing import Dict, Set, Type
 
 import aiologger
 
+from green_eggs.api import TwitchApi
 from green_eggs.client import TwitchChatClient
 from green_eggs.data_types import BaseTags, HasTags, patterns
 
@@ -19,6 +21,7 @@ unhandled_bits: Dict[Type[BaseTags], Dict[str, Set[str]]] = collections.defaultd
 secrets_file = Path(__file__).resolve().parent.parent / 'secrets.json'
 secrets = json.loads(secrets_file.read_text())
 username = secrets['username']
+client_id = secrets['client_id']
 token = secrets['token']
 
 
@@ -30,17 +33,14 @@ def record_unhandled(tags: BaseTags):
 
 
 async def stress():
+    async with TwitchApi(client_id=client_id, token=token) as api:
+        streams = await api.get_streams(first=10)
+
+    logins = [stream['user_login'] for stream in streams['data']]
+
     async with TwitchChatClient(username=username, token=token, logger=logger) as client:
-        await client.join('LEC')
-        await client.join('auronplay')
-        await client.join('otplol_')
-        await client.join('ESL_CSGO')
-        await client.join('ESL_DOTA2')
-        await client.join('xQcOW')
-        await client.join('dota2mc_ru')
-        await client.join('LVPes')
-        await client.join('ZeratoR')
-        await client.join('fps_shaka')
+        for login in logins:
+            await client.join(login)
 
         async for raw, timestamp in client.incoming():
             for handle_type, pattern in patterns.items():

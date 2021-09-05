@@ -1,73 +1,72 @@
 # -*- coding: utf-8 -*-
-import inspect
-from typing import Awaitable, Callable, Dict, Mapping, Optional
+from typing import List, Mapping, Optional
 
-command_func_type = Callable[..., Awaitable[Optional[str]]]
-
-
-def validate_callback_signature(callback, args):
-    sig = inspect.signature(callback)
-    parameters = list(sig.parameters.values())
-    pos_only_no_default = [p.name for p in parameters if p.kind == p.POSITIONAL_ONLY and p.default is p.empty]
-
-    if len(pos_only_no_default):
-        arg_names = ', '.join(map(repr, pos_only_no_default))
-        raise TypeError(f'Command callbacks may not have any non-default positional-only parameters ({arg_names})')
-
-    keyword_kinds = (
-        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        inspect.Parameter.KEYWORD_ONLY,
-    )
-    unexpected = [p.name for p in parameters if p.kind in keyword_kinds and p.default is p.empty and p.name not in args]
-    if len(unexpected):
-        arg_names = ', '.join(map(repr, unexpected))
-        raise TypeError(f'Unexpected required keyword parameter{"" if len(unexpected) == 1 else "s"}: {arg_names}')
+from green_eggs.api import TwitchApi
+from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
+from green_eggs.data_types import PrivMsg
+from green_eggs.types import RegisterAbleFunc
 
 
 class ChatBot:
-    def __init__(self, username: str, token: str):
-        self._login = (username, token)
-        self.commands: Dict[str, Callable[..., Awaitable[Optional[str]]]] = dict()
+    def __init__(self, *, channel: str):
+        self.channel = channel
+        self._commands = CommandRegistry()
 
     def register_basic_commands(self, commands: Mapping[str, str]):
         for invoke, response in commands.items():
-
-            async def respond():
-                return response
-
-            self.commands[invoke] = respond
+            trigger = FirstWordTrigger(invoke, case_sensitive=False)
+            self._commands.add(trigger, lambda: response)
 
     def register_command(self, invoke: str):
-        def register(callback):
-            validate_callback_signature(callback, [])
+        trigger = FirstWordTrigger(invoke, case_sensitive=False)
+        return self._commands.decorator(trigger)
 
-            if not inspect.iscoroutinefunction(callback):
-                sync_callback = callback
+    def register_caster_command(self, invoke: str):
+        """
+        Decorator to register a function as a caster command.
 
-                async def async_cb(**kwargs):
-                    return sync_callback(**kwargs)
+        :param invoke: The command part in the chat message
+        :return: The decorator
+        """
+        trigger = FirstWordTrigger(invoke, case_sensitive=False) & SenderIsModTrigger()
 
-                callback = async_cb
+        def factory(callback: RegisterAbleFunc, callback_keywords: List[str]) -> RegisterAbleFunc:
+            async def command(message: PrivMsg, api: TwitchApi) -> Optional[str]:
+                if not len(message.words):
+                    return 'I need a name for that'
 
-            self.commands[invoke] = callback
+                callback_kwargs = dict()
+                name = message.words[0]
+                user_result = await api.get_users(login=name.lstrip('@'))
+                if not len(user_result['data']):
+                    return f'Could not find user data for {name}'
 
-        return register
+                user = user_result['data'][0]
+                streams = await api.get_channel_information(broadcaster_id=user['id'])
+                stream = streams['data'][0]
 
-    def register_caster_command(self, invoke: str, username: Optional[str] = None):
-        def register(callback):
-            validate_callback_signature(callback, [])
+                if 'name' in callback_keywords:
+                    callback_kwargs['name'] = user['display_name']
+                if 'link' in callback_keywords:
+                    callback_kwargs['link'] = 'https://twitch.tv/' + user['login']
+                if 'game' in callback_keywords:
+                    callback_kwargs['game'] = stream['game_name']
+                if 'api_result' in callback_keywords:
+                    callback_kwargs['api_result'] = stream
 
-            async def caster(message):
-                target = message.args[0] if username is None and len(message.args) else username
+                output = callback(**callback_kwargs)
+                if output is None or isinstance(output, str):
+                    return output
+                else:
+                    return await output
 
-                # TODO: api
-                if target is not None:
-                    name = target
-                    link = f'https://twitch.tv/{name}'
-                    game = 'Just Chatting'
+            return command
 
-                    return callback(name, link, game)
+        return self._commands.decorator(
+            trigger, target_keywords=['name', 'link', 'game', 'api_result'], command_factory=factory
+        )
 
-            self.commands[invoke] = caster
-
-        return register
+    def run(self, *, username: str, token: str):
+        """
+        Main loop to run the bot after configuring.
+        """

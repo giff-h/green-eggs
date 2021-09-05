@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import abc
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 import datetime
 from functools import partial, reduce
 import keyword
@@ -57,7 +57,7 @@ def parse_badges(badges_data: str) -> _Badges:
 # Tags: Abstract
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaseTags(abc.ABC):
     deprecated_fields: ClassVar[List[str]] = [
         'subscriber',
@@ -67,7 +67,7 @@ class BaseTags(abc.ABC):
 
     deprecated: Dict[str, str]
     unhandled: Dict[str, str]
-    raw: str
+    raw: str = field(compare=False)
 
     @classmethod
     def from_raw_data(cls, data: str):
@@ -82,8 +82,8 @@ class BaseTags(abc.ABC):
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        deprecated = {field: kwargs.pop(field) for field in cls.deprecated_fields if field in kwargs}
-        unhandled = {field: kwargs.pop(field) for field in set(kwargs.keys()) - set(f.name for f in fields(cls))}
+        deprecated = {f_name: kwargs.pop(f_name) for f_name in cls.deprecated_fields if f_name in kwargs}
+        unhandled = {f_name: kwargs.pop(f_name) for f_name in set(kwargs.keys()) - set(f.name for f in fields(cls))}
 
         return dict(deprecated=deprecated, unhandled=unhandled, **kwargs)
 
@@ -99,7 +99,7 @@ class BaseTags(abc.ABC):
         return data
 
 
-@dataclass
+@dataclass(frozen=True)
 class TimestampedBaseTags(BaseTags, abc.ABC):
     tmi_sent_ts: datetime.datetime
 
@@ -110,7 +110,7 @@ class TimestampedBaseTags(BaseTags, abc.ABC):
         return super().prepare_data(**kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserBaseTags(BaseTags, abc.ABC):
     badges: _Badges
     color: str
@@ -125,7 +125,7 @@ class UserBaseTags(BaseTags, abc.ABC):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserChatBaseTags(UserBaseTags, abc.ABC):
     badge_info: _Badges
 
@@ -137,7 +137,7 @@ class UserChatBaseTags(UserBaseTags, abc.ABC):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
     emote_sets: List[int]
 
@@ -149,7 +149,7 @@ class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
     mod: bool
 
@@ -158,7 +158,7 @@ class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
         return dict(mod=bool(int(kwargs.pop('mod'))), **super().prepare_data(**kwargs))
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserMessageBaseTags(UserBaseTags, abc.ABC):
     emotes: str
     user_id: int
@@ -168,13 +168,13 @@ class UserMessageBaseTags(UserBaseTags, abc.ABC):
         return dict(user_id=int(kwargs.pop('user_id')), **super().prepare_data(**kwargs))
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserChatMessageBaseTags(TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags, abc.ABC):
     id: str
     room_id: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserSentNoticeBaseTags(BaseTags, abc.ABC):
     login: str  # the user who sent the notice
 
@@ -182,7 +182,7 @@ class UserSentNoticeBaseTags(BaseTags, abc.ABC):
 # Tags: Final
 
 
-@dataclass
+@dataclass(frozen=True)
 class ClearChatTags(BaseTags):
     ban_duration: Optional[int] = None
     room_id: Optional[int] = None
@@ -192,9 +192,9 @@ class ClearChatTags(BaseTags):
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        for field in ('ban_duration', 'room_id', 'target_user_id'):
-            if field in kwargs:
-                kwargs[field] = int(kwargs[field])
+        for f_name in ('ban_duration', 'room_id', 'target_user_id'):
+            if f_name in kwargs:
+                kwargs[f_name] = int(kwargs[f_name])
 
         if 'tmi_sent_ts' in kwargs and kwargs['tmi_sent_ts'] is not None:
             kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(int(kwargs['tmi_sent_ts']) / 1000)
@@ -202,7 +202,7 @@ class ClearChatTags(BaseTags):
         return super().prepare_data(**kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class ClearMsgTags(TimestampedBaseTags, UserSentNoticeBaseTags):
     deprecated_fields: ClassVar[List[str]] = BaseTags.deprecated_fields + [
         'room_id',
@@ -211,23 +211,24 @@ class ClearMsgTags(TimestampedBaseTags, UserSentNoticeBaseTags):
     target_msg_id: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class GlobalUserStateTags(UserEmoteSetsBaseTags):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class NoticeTags(BaseTags):
     msg_id: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class PrivMsgTags(UserChatMessageBaseTags):
     # not sure what this is or is meant to represent, but twitch said so
     bits_re: ClassVar[Pattern[str]] = re.compile(r'(^|\s)(?P<emote_name>\D+)\d+(\s|$)', flags=re.IGNORECASE)
 
     bits: Optional[str] = None
     client_nonce: Optional[str] = None
+    crowd_chant_parent_msg_id: Optional[str] = None
     custom_reward_id: Optional[str] = None
     emote_only: Optional[bool] = None
     first_msg: Optional[bool] = None
@@ -245,20 +246,20 @@ class PrivMsgTags(UserChatMessageBaseTags):
         if 'sent_ts' in kwargs:
             kwargs['sent_ts'] = int(kwargs['sent_ts'])
 
-        for field in ('emote_only', 'first_msg'):
-            if field in kwargs and kwargs[field] is not None:
-                kwargs[field] = _bool_of_int_of(kwargs[field])
+        for f_name in ('emote_only', 'first_msg'):
+            if f_name in kwargs and kwargs[f_name] is not None:
+                kwargs[f_name] = _bool_of_int_of(kwargs[f_name])
 
-        for field in ('reply_parent_display_name', 'reply_parent_msg_body'):
-            if field in kwargs and kwargs[field] is not None:
-                kwargs[field] = irc_v3_unescape(kwargs[field])
+        for f_name in ('reply_parent_display_name', 'reply_parent_msg_body'):
+            if f_name in kwargs and kwargs[f_name] is not None:
+                kwargs[f_name] = irc_v3_unescape(kwargs[f_name])
 
         return dict(
             **super().prepare_data(**kwargs),
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class RoomStateTags(BaseTags):
     converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]] = [
         (int, ['followers_only', 'slow']),
@@ -286,7 +287,7 @@ class RoomStateTags(BaseTags):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserNoticeMessageParams(BaseTags):
     converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]] = [
         (
@@ -391,7 +392,7 @@ class UserNoticeMessageParams(BaseTags):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     flags: str
     msg_id: str  # the type of the notice
@@ -407,7 +408,8 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
             for attr in tuple(kwargs.keys())
             if attr.startswith(UserNoticeMessageParams.prefix)
         }
-        # Note that this is not an exact recreation of the raw tag values but is just meant to show the set that was given
+        # Note that this is not an exact recreation of the raw tag values
+        # but is just meant to show the set that was given
         msg_params_raw = ';'.join(f'{k}={v}' for k, v in msg_params.items())
 
         return dict(
@@ -419,12 +421,12 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class WhisperTags(UserMessageBaseTags):
     message_id: int
     thread_id: str
@@ -433,10 +435,11 @@ class WhisperTags(UserMessageBaseTags):
 # Handle-able: Abstract
 
 
-@dataclass
+@dataclass(frozen=True)
 class HandleAble(abc.ABC):
-    default_timestamp: datetime.datetime
-    raw: str
+    # `default_timestamp` is not from twitch, but is set when the data was received
+    default_timestamp: datetime.datetime = field(compare=False)
+    raw: str = field(compare=False)
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> 'HandleAble':
@@ -450,12 +453,12 @@ class HandleAble(abc.ABC):
         return data
 
 
-@dataclass
+@dataclass(frozen=True)
 class FromUser(HandleAble, abc.ABC):
     who: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class HasMessage(HandleAble, abc.ABC):
     message: str
 
@@ -466,7 +469,7 @@ class HasMessage(HandleAble, abc.ABC):
         return super().from_match_dict(**kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class HasTags(HandleAble, abc.ABC):
     tags: BaseTags
 
@@ -477,12 +480,12 @@ class HasTags(HandleAble, abc.ABC):
         return super().from_match_dict(tags=tags_type.from_raw_data(kwargs.pop('tags')), **kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class InChannel(HandleAble, abc.ABC):
     where: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserInChannel(FromUser, InChannel, abc.ABC):
     pass
 
@@ -490,7 +493,7 @@ class UserInChannel(FromUser, InChannel, abc.ABC):
 # Handle-able: Final
 
 
-@dataclass
+@dataclass(frozen=True)
 class Code353(UserInChannel):
     users: List[str]
 
@@ -499,22 +502,22 @@ class Code353(UserInChannel):
         return super().from_match_dict(users=kwargs.pop('users').split(' '), **kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Code366(UserInChannel):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class ClearChat(HasTags, UserInChannel):
     tags: ClearChatTags
 
 
-@dataclass
+@dataclass(frozen=True)
 class ClearMsg(HasMessage, HasTags, InChannel):
     tags: ClearMsgTags
 
 
-@dataclass
+@dataclass(frozen=True)
 class HostTarget(InChannel):
     number_of_viewers: Optional[int]
     target: Optional[str]
@@ -530,27 +533,35 @@ class HostTarget(InChannel):
         return super().from_match_dict(number_of_viewers=number_of_viewers, **kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class JoinPart(UserInChannel):
     action: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class Notice(HasMessage, HasTags, InChannel):
     tags: NoticeTags
 
 
-@dataclass
+@dataclass(frozen=True)
 class PrivMsg(HasMessage, HasTags, UserInChannel):
     tags: PrivMsgTags
 
+    @property
+    def words(self) -> List[str]:
+        """
+        The words of the message, split by any amount of empty space
+        :return: List of words
+        """
+        return self.message.strip().split()
 
-@dataclass
+
+@dataclass(frozen=True)
 class RoomState(HasTags, InChannel):
     tags: RoomStateTags
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserNotice(HasTags, InChannel):
     tags: UserNoticeTags
     message: Optional[str]
@@ -563,12 +574,12 @@ class UserNotice(HasTags, InChannel):
         return super().from_match_dict(**kwargs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserState(HasTags, InChannel):
     tags: UserStateTags
 
 
-@dataclass
+@dataclass(frozen=True)
 class Whisper(HasMessage, HasTags, UserInChannel):
     tags: WhisperTags
 

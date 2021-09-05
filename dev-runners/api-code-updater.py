@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import builtins
 from itertools import chain, zip_longest
 import keyword
