@@ -21,7 +21,7 @@ _unescape_lookup: Dict[str, str] = {
 }
 
 
-def keyword_safe_camel_or_kebab_to_snake(inp: str) -> str:
+def _keyword_safe_camel_or_kebab_to_snake(inp: str) -> str:
     out = _camel_kebab_to_snake_pattern.sub('_', inp).lower()
     return f'{out}_' if keyword.iskeyword(out) else out
 
@@ -41,17 +41,17 @@ def _irc_v3_unescape_iter(raw: str) -> Generator[str, None, None]:
             yield c
 
 
-def irc_v3_unescape(raw: str) -> str:
+def _irc_v3_unescape(raw: str) -> str:
     return ''.join(_irc_v3_unescape_iter(raw))
 
 
-def parse_badge(badge_data: str) -> Tuple[str, str]:
+def _parse_badge(badge_data: str) -> Tuple[str, str]:
     badge_type, badge_value = badge_data.split('/')
     return badge_type.replace('-', '_'), badge_value
 
 
-def parse_badges(badges_data: str) -> _Badges:
-    return dict(map(parse_badge, filter(None, badges_data.split(','))))
+def _parse_badges(badges_data: str) -> _Badges:
+    return dict(map(_parse_badge, filter(None, badges_data.split(','))))
 
 
 # Tags: Abstract
@@ -76,7 +76,7 @@ class BaseTags(abc.ABC):
         to_prepare: Dict[str, str] = dict()
         for tag_pair in data.split(';'):
             tag, value = tag_pair.split('=', 1)
-            to_prepare[keyword_safe_camel_or_kebab_to_snake(tag)] = value
+            to_prepare[_keyword_safe_camel_or_kebab_to_snake(tag)] = value
 
         return cls(raw=data, **cls.prepare_data(**to_prepare))
 
@@ -88,7 +88,11 @@ class BaseTags(abc.ABC):
         return dict(deprecated=deprecated, unhandled=unhandled, **kwargs)
 
     def model_data(self) -> Dict[str, Any]:
-        data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != 'msg_params'}
+        data = {
+            f.name: getattr(self, f.name)
+            for f in fields(self)
+            if not isinstance(getattr(self, f.name), UserNoticeMessageParams)
+        }
         if isinstance(self, UserNoticeTags):
             data['msg_params'] = msg_params = dict()
             for f in fields(self.msg_params):
@@ -119,8 +123,8 @@ class UserBaseTags(BaseTags, abc.ABC):
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            badges=parse_badges(kwargs.pop('badges')),
-            display_name=irc_v3_unescape(kwargs.pop('display_name')),
+            badges=_parse_badges(kwargs.pop('badges')),
+            display_name=_irc_v3_unescape(kwargs.pop('display_name')),
             **super().prepare_data(**kwargs),
         )
 
@@ -132,7 +136,7 @@ class UserChatBaseTags(UserBaseTags, abc.ABC):
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            badge_info=parse_badges(kwargs.pop('badge_info')),
+            badge_info=_parse_badges(kwargs.pop('badge_info')),
             **super().prepare_data(**kwargs),
         )
 
@@ -252,7 +256,7 @@ class PrivMsgTags(UserChatMessageBaseTags):
 
         for f_name in ('reply_parent_display_name', 'reply_parent_msg_body'):
             if f_name in kwargs and kwargs[f_name] is not None:
-                kwargs[f_name] = irc_v3_unescape(kwargs[f_name])
+                kwargs[f_name] = _irc_v3_unescape(kwargs[f_name])
 
         return dict(
             **super().prepare_data(**kwargs),
@@ -315,7 +319,7 @@ class UserNoticeMessageParams(BaseTags):
             ],
         ),
         (
-            irc_v3_unescape,
+            _irc_v3_unescape,
             [
                 'display_name',
                 'gifter_name',
@@ -416,7 +420,7 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
             msg_params=UserNoticeMessageParams(
                 raw=msg_params_raw, **UserNoticeMessageParams.prepare_data(**msg_params)
             ),
-            system_msg=irc_v3_unescape(kwargs.pop('system_msg')),
+            system_msg=_irc_v3_unescape(kwargs.pop('system_msg')),
             **super().prepare_data(**kwargs),
         )
 
@@ -445,8 +449,19 @@ class HandleAble(abc.ABC):
     def from_match_dict(cls, **kwargs) -> 'HandleAble':
         return cls(**kwargs)
 
+    def as_original_match_dict(self) -> Dict[str, Any]:
+        data = {
+            f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags' or not isinstance(self, HasTags)
+        }
+        if isinstance(self, HasTags):
+            data['tags'] = self.tags.raw
+
+        return data
+
     def model_data(self) -> Dict[str, Any]:
-        data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags'}
+        data = {
+            f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags' or not isinstance(self, HasTags)
+        }
         if isinstance(self, HasTags):
             data.update(self.tags.model_data())
 
@@ -464,7 +479,7 @@ class HasMessage(HandleAble, abc.ABC):
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:
-        kwargs['message'] = irc_v3_unescape(kwargs['message'])
+        kwargs['message'] = _irc_v3_unescape(kwargs['message'])
 
         return super().from_match_dict(**kwargs)
 
@@ -500,6 +515,11 @@ class Code353(UserInChannel):
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:
         return super().from_match_dict(users=kwargs.pop('users').split(' '), **kwargs)
+
+    def as_original_match_dict(self) -> Dict[str, Any]:
+        data = super().as_original_match_dict()
+        data['users'] = ' '.join(data['users'])
+        return data
 
 
 @dataclass(frozen=True)
@@ -569,7 +589,7 @@ class UserNotice(HasTags, InChannel):
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:
         if 'message' in kwargs and kwargs['message'] is not None:
-            kwargs['message'] = irc_v3_unescape(kwargs['message'])
+            kwargs['message'] = _irc_v3_unescape(kwargs['message'])
 
         return super().from_match_dict(**kwargs)
 

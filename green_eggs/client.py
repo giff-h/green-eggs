@@ -10,7 +10,11 @@ import websockets
 from green_eggs import constants as const
 from green_eggs.exceptions import ChannelPresenceRaceCondition
 
-Data = Tuple[str, datetime.datetime]
+BufferData = Tuple[str, datetime.datetime]
+AUTH_EXPECT = 'auth'
+CAP_REQ_EXPECT = 'cap_req'
+JOIN_EXPECT = 'join'
+PART_EXPECT = 'part'
 
 
 def ensure_str(raw: Union[str, bytes]) -> str:
@@ -35,10 +39,10 @@ def format_oauth(oauth_token: str) -> str:
 class TwitchChatClient:
     host = 'wss://irc-ws.chat.twitch.tv:443'
     expectation_patterns: Dict[str, Pattern[str]] = {
-        const.AUTH_EXPECT: const.AUTH_EXPECT_PATTERN,
-        const.CAP_REQ_EXPECT: const.CAP_ACK_PATTERN,
-        const.JOIN_EXPECT: const.JOIN_EXPECT_PATTERN,
-        const.PART_EXPECT: const.PART_EXPECT_PATTERN,
+        AUTH_EXPECT: const.AUTH_EXPECT_PATTERN,
+        CAP_REQ_EXPECT: const.CAP_ACK_PATTERN,
+        JOIN_EXPECT: const.JOIN_EXPECT_PATTERN,
+        PART_EXPECT: const.PART_EXPECT_PATTERN,
     }
 
     def __init__(self, *, username: str, token: str, logger: Logger):
@@ -50,11 +54,12 @@ class TwitchChatClient:
         # Awaitable holders
         self.buffer_task: Optional[asyncio.Task] = None
         self.expectations: Dict[str, Dict[str, asyncio.Future]] = {}
-        self.message_buffer: 'asyncio.Queue[Data]' = asyncio.Queue()
+        self.message_buffer: 'asyncio.Queue[BufferData]' = asyncio.Queue()
 
         # Other placeholders
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
         self.ws_exc: Optional[Exception] = None
+        self._expect_timeout: Union[float, int] = 5
 
     async def buffer_messages(self):
         """
@@ -75,6 +80,8 @@ class TwitchChatClient:
                 now = datetime.datetime.utcnow()
                 async for line in self.filter_expected(data):
                     await self.message_buffer.put((line, now))
+            except asyncio.CancelledError:
+                break
             except websockets.ConnectionClosedError:
                 self.logger.debug('Caught a closed connection. Reconnecting...')
                 await self.connect()
@@ -132,7 +139,7 @@ class TwitchChatClient:
             elif self.manage_expectations(line):
                 yield line
 
-    async def incoming(self) -> AsyncIterator[Data]:
+    async def incoming(self) -> AsyncIterator[BufferData]:
         """
         The main infinite loop of incoming messages.
 
@@ -153,14 +160,15 @@ class TwitchChatClient:
         if not await self.is_connected():
             return
 
-        self.buffer_task = asyncio.create_task(self.buffer_messages())
+        if self.buffer_task is None:
+            self.buffer_task = asyncio.create_task(self.buffer_messages())
 
-        expects = self.queue_expectations(const.AUTH_EXPECT, *const.EXPECTED_AUTH_CODES)
+        expects = self.queue_expectations(AUTH_EXPECT, *const.EXPECTED_AUTH_CODES, timeout=self._expect_timeout)
         await self.send(f'PASS {self.token}', redact_log='PASS ******')
         await self.send(f'NICK {self.username}')
         await asyncio.gather(*expects)
 
-        expects = self.queue_expectations(const.CAP_REQ_EXPECT, *const.CAP_REQ_MODES)
+        expects = self.queue_expectations(CAP_REQ_EXPECT, *const.CAP_REQ_MODES, timeout=self._expect_timeout)
         await self.send('CAP REQ :' + ' '.join(f'twitch.tv/{mode}' for mode in const.CAP_REQ_MODES))
         await asyncio.gather(*expects)
 
@@ -194,16 +202,16 @@ class TwitchChatClient:
         channel = channel.lower()
         self.logger.info(f'Joining channel #{channel}')
 
-        if channel in self.expectations.get(const.JOIN_EXPECT, tuple()):
+        if channel in self.expectations.get(JOIN_EXPECT, tuple()):
             self.logger.debug(f'Attempted to join #{channel} but was already joining')
             return False
 
-        if channel in self.expectations.get(const.PART_EXPECT, tuple()):
+        if channel in self.expectations.get(PART_EXPECT, tuple()):
             self.logger.debug(f'Attempted to join #{channel} but it was just left and is unconfirmed')
             if action_if_leaving == 'wait':
                 self.logger.debug('Waiting on leave confirmation then joining')
                 try:
-                    await self.expectations[const.PART_EXPECT][channel]
+                    await asyncio.wait_for(self.expectations[PART_EXPECT][channel], self._expect_timeout)
                 except asyncio.TimeoutError:
                     self.logger.warning('Earlier leave did not succeed. Abandoning the join')
                     return False
@@ -214,7 +222,7 @@ class TwitchChatClient:
                 self.logger.debug('Abandoning the join')
                 return False
 
-        self.queue_expectations(const.JOIN_EXPECT, channel)
+        self.queue_expectations(JOIN_EXPECT, channel)
         await self.send(f'JOIN #{channel}')
         return True
 
@@ -237,11 +245,11 @@ class TwitchChatClient:
         channel = channel.lower()
         self.logger.info(f'Leaving channel #{channel}')
 
-        if channel in self.expectations.get(const.PART_EXPECT, tuple()):
+        if channel in self.expectations.get(PART_EXPECT, tuple()):
             self.logger.debug(f'Attempted to leave #{channel} but was already leaving')
             return False
 
-        if channel in self.expectations.get(const.JOIN_EXPECT, tuple()):
+        if channel in self.expectations.get(JOIN_EXPECT, tuple()):
             self.logger.debug(f'Attempted to leave #{channel} but it was just joined and is unconfirmed')
             if action_if_joining == 'raise':
                 self.logger.debug('Raising exception due to race condition')
@@ -249,7 +257,7 @@ class TwitchChatClient:
             elif action_if_joining == 'wait':
                 self.logger.debug('Waiting on join confirmation then leaving')
                 try:
-                    await self.expectations[const.JOIN_EXPECT][channel]
+                    await asyncio.wait_for(self.expectations[JOIN_EXPECT][channel], self._expect_timeout)
                 except asyncio.TimeoutError:
                     self.logger.warning('Earlier join did not succeed. Abandoning the leave')
                     return False
@@ -257,7 +265,7 @@ class TwitchChatClient:
                 self.logger.debug('Abandoning the leave')
                 return False
 
-        self.queue_expectations(const.PART_EXPECT, channel)
+        self.queue_expectations(PART_EXPECT, channel)
         await self.send(f'PART #{channel}')
         return True
 
@@ -272,7 +280,7 @@ class TwitchChatClient:
         for expect in self.expectations.keys():
             pattern = self.expectation_patterns[expect]
 
-            if expect == const.AUTH_EXPECT:
+            if expect == AUTH_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
                     code = match.group('code')
@@ -280,7 +288,7 @@ class TwitchChatClient:
                     self.resolve_expectations(expect, code)
                     return False
 
-            elif expect == const.CAP_REQ_EXPECT:
+            elif expect == CAP_REQ_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
                     acknowledged = match.group('cap')
@@ -289,14 +297,14 @@ class TwitchChatClient:
                     self.resolve_expectations(expect, *capacities)
                     return False
 
-            elif expect == const.JOIN_EXPECT:
+            elif expect == JOIN_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
                     if match.group('who') == self.username:
                         self.resolve_expectations(expect, match.group('joined'))
                         return True
 
-            elif expect == const.PART_EXPECT:
+            elif expect == PART_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
                     if match.group('who') == self.username:
@@ -359,7 +367,9 @@ class TwitchChatClient:
         :param str parts: Category part names
         """
         for part in parts:
-            self.expectations[category][part].set_result(None)
+            future = self.expectations[category][part]
+            if not future.done():
+                self.expectations[category][part].set_result(None)
             del self.expectations[category][part]
             self.logger.debug(f'Resolved expectation {category}:{part}')
 
@@ -405,5 +415,5 @@ class TwitchChatClient:
             self.websocket = None
             await websocket.close()
 
-        for category, expectations in self.expectations.items():
+        for category, expectations in list(self.expectations.items()):
             self.resolve_expectations(category, *list(expectations.keys()))

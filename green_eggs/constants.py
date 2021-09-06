@@ -15,21 +15,17 @@ _user_tmi = rf':(?P<who>{_user})!(?P=who)@(?P=who)\.{_tmi}'
 
 USERNAME_REGEX = re.compile(rf'^@?{_user}$', flags=re.IGNORECASE)
 
-AUTH_EXPECT = 'auth'
 EXPECTED_AUTH_CODES = ['001', '002', '003', '004', '375', '372', '376']
 AUTH_EXPECT_PATTERN = re.compile(rf'^:{_tmi} (?P<code>{"|".join(EXPECTED_AUTH_CODES)}) (?P<msg>.*)$')
 
-CAP_REQ_EXPECT = 'cap_req'
 CAP_REQ_MODES = ['commands', 'membership', 'tags']
 _cap_ack_part = rf'twitch\.tv/(?:{"|".join(CAP_REQ_MODES)})'
 # noinspection RegExpUnnecessaryNonCapturingGroup
 CAP_ACK_PATTERN = re.compile(rf'^:{_tmi} CAP \* ACK :(?P<cap>(?:{_cap_ack_part} )*(?:{_cap_ack_part}))$')
 
-JOIN_EXPECT = 'join'
 EXPECTED_JOIN_CODES = ['353', '366']
 JOIN_EXPECT_PATTERN = re.compile(rf'^{_user_tmi} JOIN #(?P<joined>{_user})$')
 
-PART_EXPECT = 'part'
 PART_EXPECT_PATTERN = re.compile(rf'^{_user_tmi} PART #(?P<left>{_user})$')
 
 RECONNECT_PATTERN = re.compile(rf'^:{_tmi} RECONNECT$')
