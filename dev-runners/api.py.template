@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Un
 from urllib.parse import urlencode
 
 import aiohttp
+from aiologger import Logger
 
 _empty: Any = object()
 UrlParams = Union[
@@ -21,9 +22,10 @@ def exclude_non_empty(**kwargs):
 class TwitchApi:
     _base_url = 'https://api.twitch.tv/helix/'
 
-    def __init__(self, *, client_id: str, token: str):
+    def __init__(self, *, client_id: str, token: str, logger: Logger):
         headers = {'Client-ID': client_id, 'Authorization': f'Bearer {token}'}
-        self.session = aiohttp.ClientSession(headers=headers)
+        self._logger: Logger = logger
+        self._session: aiohttp.ClientSession = aiohttp.ClientSession(headers=headers)
 
     async def _request(
         self,
@@ -48,7 +50,9 @@ class TwitchApi:
         if params is not _empty and len(params):
             url += f'?{urlencode(params, doseq=True)}'
 
-        async with self.session.request(method, url, json=data) as response:
+        self._logger.debug(f'Making {method} request to {url}')
+
+        async with self._session.request(method, url, json=data) as response:
             if raise_for_status:
                 response.raise_for_status()
             response_data = await response.json()
@@ -56,7 +60,7 @@ class TwitchApi:
         return response_data
 
     async def __aenter__(self) -> 'TwitchApi':
-        self.session = await self.session.__aenter__()
+        self._session = await self._session.__aenter__()
         return self
 
     async def __aexit__(
@@ -65,6 +69,6 @@ class TwitchApi:
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ):
-        await self.session.__aexit__(exc_type, exc_val, exc_tb)
+        await self._session.__aexit__(exc_type, exc_val, exc_tb)
 
     # API endpoint functions

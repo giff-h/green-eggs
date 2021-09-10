@@ -2,7 +2,7 @@
 import asyncio
 import datetime
 from types import TracebackType
-from typing import AsyncIterator, Dict, List, Optional, Pattern, Tuple, Type, Union
+from typing import AsyncIterator, ClassVar, Dict, List, Optional, Pattern, Tuple, Type, Union
 
 from aiologger import Logger
 import websockets
@@ -37,29 +37,27 @@ def format_oauth(oauth_token: str) -> str:
 
 
 class TwitchChatClient:
-    host = 'wss://irc-ws.chat.twitch.tv:443'
-    expectation_patterns: Dict[str, Pattern[str]] = {
+    host: ClassVar[str] = 'wss://irc-ws.chat.twitch.tv:443'
+    expectation_patterns: ClassVar[Dict[str, Pattern[str]]] = {
         AUTH_EXPECT: const.AUTH_EXPECT_PATTERN,
         CAP_REQ_EXPECT: const.CAP_ACK_PATTERN,
         JOIN_EXPECT: const.JOIN_EXPECT_PATTERN,
         PART_EXPECT: const.PART_EXPECT_PATTERN,
     }
 
+    ws_exc: Optional[Exception]
+
     def __init__(self, *, username: str, token: str, logger: Logger):
-        # Initial data
-        self.logger = logger
-        self.token = format_oauth(token)
-        self.username = username.lower()
+        self.ws_exc = None
 
-        # Awaitable holders
-        self.buffer_task: Optional[asyncio.Task] = None
-        self.expectations: Dict[str, Dict[str, asyncio.Future]] = {}
-        self.message_buffer: 'asyncio.Queue[BufferData]' = asyncio.Queue()
-
-        # Other placeholders
-        self.websocket: Optional[websockets.WebSocketClientProtocol] = None
-        self.ws_exc: Optional[Exception] = None
+        self._buffer_task: Optional[asyncio.Task] = None
         self._expect_timeout: Union[float, int] = 5
+        self._expectations: Dict[str, Dict[str, asyncio.Future]] = dict()
+        self._logger: Logger = logger
+        self._message_buffer: 'asyncio.Queue[BufferData]' = asyncio.Queue()
+        self._token: str = format_oauth(token)
+        self._username: str = username.lower()
+        self._websocket: Optional[websockets.WebSocketClientProtocol] = None
 
     async def buffer_messages(self):
         """
@@ -70,8 +68,8 @@ class TwitchChatClient:
         :return: Generator of messages for consumption
         :rtype: AsyncIterator[Tuple[str, datetime.datetime]]
         """
-        assert self.websocket is not None  # typing
-        await self.websocket.ensure_open()
+        assert self._websocket is not None  # typing
+        await self._websocket.ensure_open()
 
         while True:
             # noinspection PyBroadException
@@ -79,15 +77,15 @@ class TwitchChatClient:
                 data = await self.recv()
                 now = datetime.datetime.utcnow()
                 async for line in self.filter_expected(data):
-                    await self.message_buffer.put((line, now))
+                    await self._message_buffer.put((line, now))
             except asyncio.CancelledError:
                 break
             except websockets.ConnectionClosedError:
-                self.logger.debug('Caught a closed connection. Reconnecting...')
+                self._logger.debug('Caught a closed connection. Reconnecting...')
                 await self.connect()
                 await self.initialize()
             except Exception:
-                self.logger.exception('Unhandled exception in listen loop')
+                self._logger.exception('Unhandled exception in listen loop')
 
     async def connect(self):
         """
@@ -96,10 +94,10 @@ class TwitchChatClient:
         :raises Exception: from the websocket connect if any happened
         """
         try:
-            self.websocket = await websockets.connect(self.host, timeout=10)
+            self._websocket = await websockets.connect(self.host, timeout=10)
         except Exception as e:
             self.ws_exc = e
-            self.logger.exception('Websocket connection failed')
+            self._logger.exception('Websocket connection failed')
             raise
 
     async def expect(self, expectation: asyncio.Future, label: str, timeout: int = 5):
@@ -117,7 +115,7 @@ class TwitchChatClient:
         try:
             await asyncio.wait_for(expectation, timeout=timeout)
         except asyncio.TimeoutError:
-            self.logger.error(f'Timed out {label} expectation')
+            self._logger.error(f'Timed out {label} expectation')
             raise
 
     async def filter_expected(self, data: str) -> AsyncIterator[str]:
@@ -131,8 +129,8 @@ class TwitchChatClient:
         """
         for line in filter(None, data.splitlines()):
             if const.RECONNECT_PATTERN.match(line):
-                assert self.websocket is not None
-                await self.websocket.close()
+                assert self._websocket is not None
+                await self._websocket.close()
                 await self.connect()
                 await self.initialize()
                 break
@@ -149,7 +147,7 @@ class TwitchChatClient:
         :rtype: AsyncIterator[Tuple[str, datetime.datetime]]
         """
         while True:
-            yield await self.message_buffer.get()
+            yield await self._message_buffer.get()
 
     async def initialize(self):
         """
@@ -160,12 +158,12 @@ class TwitchChatClient:
         if not await self.is_connected():
             return
 
-        if self.buffer_task is None:
-            self.buffer_task = asyncio.create_task(self.buffer_messages())
+        if self._buffer_task is None:
+            self._buffer_task = asyncio.create_task(self.buffer_messages())
 
         expects = self.queue_expectations(AUTH_EXPECT, *const.EXPECTED_AUTH_CODES, timeout=self._expect_timeout)
-        await self.send(f'PASS {self.token}', redact_log='PASS ******')
-        await self.send(f'NICK {self.username}')
+        await self.send(f'PASS {self._token}', redact_log='PASS ******')
+        await self.send(f'NICK {self._username}')
         await asyncio.gather(*expects)
 
         expects = self.queue_expectations(CAP_REQ_EXPECT, *const.CAP_REQ_MODES, timeout=self._expect_timeout)
@@ -177,10 +175,10 @@ class TwitchChatClient:
         :return: Is the connection open?
         :rtype: bool
         """
-        if self.websocket is None:
+        if self._websocket is None:
             return False
 
-        await self.websocket.ensure_open()
+        await self._websocket.ensure_open()
         return True
 
     async def join(self, channel: str, action_if_leaving: str = 'wait') -> bool:
@@ -200,26 +198,26 @@ class TwitchChatClient:
         :rtype: bool
         """
         channel = channel.lower()
-        self.logger.info(f'Joining channel #{channel}')
+        self._logger.info(f'Joining channel #{channel}')
 
-        if channel in self.expectations.get(JOIN_EXPECT, tuple()):
-            self.logger.debug(f'Attempted to join #{channel} but was already joining')
+        if channel in self._expectations.get(JOIN_EXPECT, tuple()):
+            self._logger.debug(f'Attempted to join #{channel} but was already joining')
             return False
 
-        if channel in self.expectations.get(PART_EXPECT, tuple()):
-            self.logger.debug(f'Attempted to join #{channel} but it was just left and is unconfirmed')
+        if channel in self._expectations.get(PART_EXPECT, tuple()):
+            self._logger.debug(f'Attempted to join #{channel} but it was just left and is unconfirmed')
             if action_if_leaving == 'wait':
-                self.logger.debug('Waiting on leave confirmation then joining')
+                self._logger.debug('Waiting on leave confirmation then joining')
                 try:
-                    await asyncio.wait_for(self.expectations[PART_EXPECT][channel], self._expect_timeout)
+                    await asyncio.wait_for(self._expectations[PART_EXPECT][channel], self._expect_timeout)
                 except asyncio.TimeoutError:
-                    self.logger.warning('Earlier leave did not succeed. Abandoning the join')
+                    self._logger.warning('Earlier leave did not succeed. Abandoning the join')
                     return False
             elif action_if_leaving == 'raise':
-                self.logger.debug('Raising exception due to race condition')
+                self._logger.debug('Raising exception due to race condition')
                 raise ChannelPresenceRaceCondition('Tried to join while leaving')
             elif action_if_leaving == 'abort':
-                self.logger.debug('Abandoning the join')
+                self._logger.debug('Abandoning the join')
                 return False
 
         self.queue_expectations(JOIN_EXPECT, channel)
@@ -243,26 +241,26 @@ class TwitchChatClient:
         :rtype: bool
         """
         channel = channel.lower()
-        self.logger.info(f'Leaving channel #{channel}')
+        self._logger.info(f'Leaving channel #{channel}')
 
-        if channel in self.expectations.get(PART_EXPECT, tuple()):
-            self.logger.debug(f'Attempted to leave #{channel} but was already leaving')
+        if channel in self._expectations.get(PART_EXPECT, tuple()):
+            self._logger.debug(f'Attempted to leave #{channel} but was already leaving')
             return False
 
-        if channel in self.expectations.get(JOIN_EXPECT, tuple()):
-            self.logger.debug(f'Attempted to leave #{channel} but it was just joined and is unconfirmed')
+        if channel in self._expectations.get(JOIN_EXPECT, tuple()):
+            self._logger.debug(f'Attempted to leave #{channel} but it was just joined and is unconfirmed')
             if action_if_joining == 'raise':
-                self.logger.debug('Raising exception due to race condition')
+                self._logger.debug('Raising exception due to race condition')
                 raise ChannelPresenceRaceCondition('Tried to leave while joining')
             elif action_if_joining == 'wait':
-                self.logger.debug('Waiting on join confirmation then leaving')
+                self._logger.debug('Waiting on join confirmation then leaving')
                 try:
-                    await asyncio.wait_for(self.expectations[JOIN_EXPECT][channel], self._expect_timeout)
+                    await asyncio.wait_for(self._expectations[JOIN_EXPECT][channel], self._expect_timeout)
                 except asyncio.TimeoutError:
-                    self.logger.warning('Earlier join did not succeed. Abandoning the leave')
+                    self._logger.warning('Earlier join did not succeed. Abandoning the leave')
                     return False
             elif action_if_joining == 'abort':
-                self.logger.debug('Abandoning the leave')
+                self._logger.debug('Abandoning the leave')
                 return False
 
         self.queue_expectations(PART_EXPECT, channel)
@@ -277,14 +275,14 @@ class TwitchChatClient:
         :return: `True` if the data should be dispatched to workers, `False` if not
         :rtype: bool
         """
-        for expect in self.expectations.keys():
+        for expect in self._expectations.keys():
             pattern = self.expectation_patterns[expect]
 
             if expect == AUTH_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
                     code = match.group('code')
-                    self.logger.debug(f'Auth resp: {match.group("msg")!r}')
+                    self._logger.debug(f'Auth resp: {match.group("msg")!r}')
                     self.resolve_expectations(expect, code)
                     return False
 
@@ -292,7 +290,7 @@ class TwitchChatClient:
                 match = pattern.match(data)
                 if match is not None:
                     acknowledged = match.group('cap')
-                    self.logger.debug(f'Capacities acknowledged: {acknowledged}')
+                    self._logger.debug(f'Capacities acknowledged: {acknowledged}')
                     capacities = [cap[10:] for cap in acknowledged.split(' ')]
                     self.resolve_expectations(expect, *capacities)
                     return False
@@ -300,14 +298,14 @@ class TwitchChatClient:
             elif expect == JOIN_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
-                    if match.group('who') == self.username:
+                    if match.group('who') == self._username:
                         self.resolve_expectations(expect, match.group('joined'))
                         return True
 
             elif expect == PART_EXPECT:
                 match = pattern.match(data)
                 if match is not None:
-                    if match.group('who') == self.username:
+                    if match.group('who') == self._username:
                         self.resolve_expectations(expect, match.group('left'))
                         return True
 
@@ -329,7 +327,7 @@ class TwitchChatClient:
         expects: List[asyncio.Task] = []
 
         if len(parts):
-            category_dict = self.expectations.setdefault(category, dict())
+            category_dict = self._expectations.setdefault(category, dict())
             for part in parts:
                 category_dict[part] = asyncio.Future()
                 expects.append(
@@ -347,14 +345,14 @@ class TwitchChatClient:
         :return: Raw data from the server, possibly multiline?
         :rtype: str
         """
-        assert self.websocket is not None  # typing
-        data = ensure_str(await self.websocket.recv())
+        assert self._websocket is not None  # typing
+        data = ensure_str(await self._websocket.recv())
 
         while data.startswith('PING '):
-            self.logger.debug('PING?')
+            self._logger.debug('PING?')
             asyncio.create_task(self.send(f'PONG {data.rstrip()[5:]}'))
-            self.logger.debug('PONG!')
-            data = ensure_str(await self.websocket.recv())
+            self._logger.debug('PONG!')
+            data = ensure_str(await self._websocket.recv())
 
         return data
 
@@ -367,14 +365,14 @@ class TwitchChatClient:
         :param str parts: Category part names
         """
         for part in parts:
-            future = self.expectations[category][part]
+            future = self._expectations[category][part]
             if not future.done():
-                self.expectations[category][part].set_result(None)
-            del self.expectations[category][part]
-            self.logger.debug(f'Resolved expectation {category}:{part}')
+                self._expectations[category][part].set_result(None)
+            del self._expectations[category][part]
+            self._logger.debug(f'Resolved expectation {category}:{part}')
 
-        if not len(self.expectations[category]):
-            del self.expectations[category]
+        if not len(self._expectations[category]):
+            del self._expectations[category]
 
     async def send(self, data: str, redact_log: Optional[str] = None):
         """
@@ -387,14 +385,14 @@ class TwitchChatClient:
         :param redact_log: Optional value to log instead of the data
         :type redact_log: str or None
         """
-        if self.websocket is None:
+        if self._websocket is None:
             return
 
         if redact_log is None:
-            self.logger.debug(f'Sending data: {data!r}')
+            self._logger.debug(f'Sending data: {data!r}')
         else:
-            self.logger.debug(f'Sending data: {redact_log!r}')
-        await self.websocket.send(data + '\r\n')
+            self._logger.debug(f'Sending data: {redact_log!r}')
+        await self._websocket.send(data + '\r\n')
 
     async def __aenter__(self) -> 'TwitchChatClient':
         await self.connect()
@@ -407,13 +405,13 @@ class TwitchChatClient:
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ):
-        if self.buffer_task is not None:
-            self.buffer_task.cancel()
+        if self._buffer_task is not None:
+            self._buffer_task.cancel()
 
-        if self.websocket is not None:
-            websocket = self.websocket
-            self.websocket = None
+        if self._websocket is not None:
+            websocket = self._websocket
+            self._websocket = None
             await websocket.close()
 
-        for category, expectations in list(self.expectations.items()):
+        for category, expectations in list(self._expectations.items()):
             self.resolve_expectations(category, *list(expectations.keys()))

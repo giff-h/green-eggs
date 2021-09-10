@@ -5,17 +5,15 @@ import contextlib
 import json
 from pathlib import Path
 import pprint
-from typing import Dict, Set, Type
+from typing import Dict, Set, Type, Union
 
 import aiologger
 
 from green_eggs.api import TwitchApi
 from green_eggs.client import TwitchChatClient
-from green_eggs.data_types import BaseTags, ClearChat, HasTags, PrivMsg, patterns
+from green_eggs.data_types import BaseTags, HandleAble, HasTags, UserNoticeTags, patterns
 
-logger = aiologger.Logger.with_default_handlers(name='stress')
-
-unhandled_bits: Dict[Type[BaseTags], Dict[str, Set[str]]] = collections.defaultdict(
+unhandled_bits: Dict[Union[Type[HandleAble], Type[BaseTags]], Dict[str, Set[str]]] = collections.defaultdict(
     lambda: collections.defaultdict(set)
 )
 
@@ -27,15 +25,19 @@ client_id = secrets['client_id']
 token = secrets['token']
 
 
-def record_unhandled(tags: BaseTags):
-    if len(tags.unhandled):
-        unhandled_for_tags_type = unhandled_bits[type(tags)]
-        for k, v in tags.unhandled.items():
-            unhandled_for_tags_type[k].add(v)
+def record_unhandled(data_type: Union[HandleAble, BaseTags]):
+    if len(data_type.unhandled):
+        unhandled_for_data_type = unhandled_bits[type(data_type)]
+        for k, v in data_type.unhandled.items():
+            unhandled_for_data_type[k].add(v)
+    if isinstance(data_type, HasTags):
+        record_unhandled(data_type.tags)
+    if isinstance(data_type, UserNoticeTags):
+        record_unhandled(data_type.msg_params)
 
 
 @contextlib.asynccontextmanager
-async def client():
+async def client(logger: aiologger.Logger):
     async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
         try:
             yield chat
@@ -44,12 +46,14 @@ async def client():
 
 
 async def stress():
-    async with TwitchApi(client_id=client_id, token=token) as api:
+    logger = aiologger.Logger.with_default_handlers(name='stress')
+
+    async with TwitchApi(client_id=client_id, token=token, logger=logger) as api:
         streams = await api.get_streams(first=10)
 
     logins = [stream['user_login'] for stream in streams['data']]
 
-    async with client() as chat:
+    async with client(logger) as chat:
         for login in logins:
             await chat.join(login)
 
@@ -67,8 +71,7 @@ async def stress():
                         print(f'- HandleAble type: {handle_type.__name__}\nRaw message: {raw!r}')
                         print(f'- {e}')
                     else:
-                        if isinstance(handle_able, HasTags):
-                            record_unhandled(handle_able.tags)
+                        record_unhandled(handle_able)
 
 
 if __name__ == '__main__':
@@ -76,13 +79,12 @@ if __name__ == '__main__':
     task = None
     try:
         task = loop.create_task(stress())
-        loop.run_forever()
+        loop.run_until_complete(task)
     except KeyboardInterrupt:
         if task:
             task.cancel()
     finally:
         print()  # jump past the ^C in the terminal
-        pprint.pprint({handle_able.__name__: dict(unhandled) for handle_able, unhandled in unhandled_bits.items()})
-        if task is not None:
-            loop.run_until_complete(task)
-        loop.close()
+        pprint.pprint({type_.__name__: dict(unhandled) for type_, unhandled in list(unhandled_bits.items())})
+        pending = asyncio.all_tasks(loop=loop)
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))

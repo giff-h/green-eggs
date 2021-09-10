@@ -3,6 +3,7 @@ import random
 import re
 
 from green_eggs import ChatBot
+from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
 
 bot = ChatBot(channel='')
@@ -15,7 +16,7 @@ bot.register_basic_commands(
 )
 
 
-@bot.register_command('!roll')
+@bot.register_command(invoke='!roll')
 def roll(message: PrivMsg):
     dice_regex = re.compile(r'(?P<count>\d*)d(?P<sides>\d+)')
     spec = message.words[1] if len(message.words) >= 1 else '1d20'
@@ -44,17 +45,17 @@ def roll(message: PrivMsg):
     return 'Usage: !roll [count]d[sides]'
 
 
-@bot.register_command('!calm')
-async def calm(channel):
+@bot.register_command(invoke='!calm')
+async def calm(channel: Channel):
     await channel.send('EVERYBODY PANIC!')
     await channel.send('/me =============\\o\\')
     await channel.send('/me /o/=============')
 
 
-@bot.register_caster_command('!caster')
-def caster(name, link, game):
+@bot.register_caster_command(invoke='!caster')
+def caster(name: str, link: str, game: str):
     return f'We love {name}, check them out at {link} for fun times such as {game}'
 
 
 if __name__ == '__main__':
-    bot.run(username='', token='')
+    bot.run_sync(username='', token='', client_id='')

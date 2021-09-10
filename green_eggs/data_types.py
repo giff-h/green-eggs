@@ -10,7 +10,7 @@ from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, Pat
 from green_eggs import constants as const
 
 _Badges = Dict[str, str]
-_bool_of_int_of = partial(reduce, lambda x, y: y(x), (int, bool))
+_bool_of_int_of: 'partial[bool]' = partial(reduce, lambda x, y: y(x), (int, bool))
 _camel_kebab_to_snake_pattern: Pattern[str] = re.compile(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|-+')
 _unescape_lookup: Dict[str, str] = {
     '\\': '\\',
@@ -165,11 +165,11 @@ class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
 @dataclass(frozen=True)
 class UserMessageBaseTags(UserBaseTags, abc.ABC):
     emotes: str
-    user_id: int
+    user_id: str
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        return dict(user_id=int(kwargs.pop('user_id')), **super().prepare_data(**kwargs))
+        return dict(**super().prepare_data(**kwargs))
 
 
 @dataclass(frozen=True)
@@ -274,14 +274,13 @@ class RoomStateTags(BaseTags):
     followers_only: Optional[int]
     r9k: Optional[bool]
     rituals: Optional[bool]
-    room_id: int
+    room_id: str
     slow: Optional[int]
     subs_only: Optional[bool]
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            room_id=int(kwargs.pop('room_id')),
             **{
                 attr: converter(kwargs.pop(attr)) if attr in kwargs else None
                 for converter, attrs in cls.converter_mapping
@@ -344,6 +343,7 @@ class UserNoticeMessageParams(BaseTags):
     fun_string: Optional[str] = None
     gift_month_being_redeemed: Optional[int] = None
     gift_months: Optional[int] = None
+    gift_theme: Optional[str] = None
     gifter_id: Optional[int] = None
     gifter_login: Optional[str] = None
     gifter_name: Optional[str] = None
@@ -441,18 +441,21 @@ class WhisperTags(UserMessageBaseTags):
 
 @dataclass(frozen=True)
 class HandleAble(abc.ABC):
-    # `default_timestamp` is not from twitch, but is set when the data was received
+    # `default_timestamp` is not from twitch, but is set by the IRC client when the data was received
     default_timestamp: datetime.datetime = field(compare=False)
+    unhandled: Dict[str, str]
     raw: str = field(compare=False)
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> 'HandleAble':
-        return cls(**kwargs)
+        unhandled = {f_name: kwargs.pop(f_name) for f_name in set(kwargs.keys()) - set(f.name for f in fields(cls))}
+        return cls(unhandled=unhandled, **kwargs)
 
     def as_original_match_dict(self) -> Dict[str, Any]:
         data = {
             f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags' or not isinstance(self, HasTags)
         }
+        data.update(data.pop('unhandled'))
         if isinstance(self, HasTags):
             data['tags'] = self.tags.raw
 
@@ -557,6 +560,16 @@ class HostTarget(InChannel):
 class JoinPart(UserInChannel):
     action: str
 
+    @property
+    def is_join(self) -> bool:
+        """
+        Is this a JOIN rather than a PART.
+
+        :return: True if the action is `'JOIN'`
+        :rtype: bool
+        """
+        return self.action == 'JOIN'
+
 
 @dataclass(frozen=True)
 class Notice(HasMessage, HasTags, InChannel):
@@ -567,11 +580,36 @@ class Notice(HasMessage, HasTags, InChannel):
 class PrivMsg(HasMessage, HasTags, UserInChannel):
     tags: PrivMsgTags
 
+    def is_from_user(self, user: str) -> bool:
+        """
+        Is this message sent by the given user.
+
+        Checks display name and login case insensitive.
+
+        :param user: The display or login name of the user
+        :return: True if the user sent the message
+        :rtype: bool
+        """
+        user = user.lower()
+        return self.who == user or self.tags.display_name.lower() == user
+
+    @property
+    def is_subscribed(self) -> bool:
+        """
+        Is the user indicated as subscribed in the channel this message was sent.
+
+        :return: True if the message has a subscriber badge
+        :rtype: bool
+        """
+        return 'subscriber' in self.tags.badges
+
     @property
     def words(self) -> List[str]:
         """
-        The words of the message, split by any amount of empty space
+        The words of the message, split by any amount of empty space.
+
         :return: List of words
+        :rtype: List[str]
         """
         return self.message.strip().split()
 

@@ -10,6 +10,7 @@ if [ "$0" != "-bash" ]; then
   ci_lint_check_test () {
     cd "${REPO_BASE_DIR}"
     poetry run mypy .
+    poetry run stubgen -p green_eggs -o stubs
     poetry run docformatter --check ${DOCFORMATTER_OPTS} .
     poetry run isort --check .
     poetry run black --check .
@@ -21,6 +22,7 @@ if [ "$0" != "-bash" ]; then
   local_lint_clean_test () {
     cd "${REPO_BASE_DIR}"
     poetry run mypy .
+    poetry run stubgen -p green_eggs -o stubs
     poetry run docformatter ${DOCFORMATTER_OPTS} .
     poetry run isort .
     poetry run black .
@@ -30,7 +32,6 @@ if [ "$0" != "-bash" ]; then
   }
 
   pre_commit_stash_and_clean () {
-    echo "${REPO_BASE_DIR}"
     if [ "$(git status --porcelain=v1 | grep '^.[^ ]' | wc -l)" = "0" ]; then
       # All changes are in index, no need to stash
       local_lint_clean_test

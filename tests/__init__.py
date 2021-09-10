@@ -14,9 +14,11 @@ logger = Logger.with_default_handlers(name='testing')
 
 
 class MockResponse:
-    @staticmethod
-    async def json():
-        return dict(foo='bar')
+    def __init__(self, return_json=None):
+        self._return_json = return_json or dict(foo='bar')
+
+    async def json(self):
+        return self._return_json
 
     @staticmethod
     def raise_for_status():
@@ -24,15 +26,15 @@ class MockResponse:
 
 
 @contextlib.asynccontextmanager
-async def response_context():
-    yield MockResponse()
+async def response_context(**kwargs):
+    yield MockResponse(**kwargs)
 
 
 @pytest.fixture
 async def api(mocker: MockerFixture):
     mocker.patch('aiohttp.ClientSession.request', return_value=response_context())
 
-    async with TwitchApi(client_id='test client', token='test token') as api_client:
+    async with TwitchApi(client_id='test client', token='test token', logger=logger) as api_client:
         api_client._base_url = 'base/'
         yield api_client
 
@@ -107,5 +109,5 @@ async def client(mocker: MockerFixture):
 
     async with TwitchChatClient(username='test_username', token='test_token', logger=logger) as chat:
         # noinspection PyProtectedMember
-        assert chat.websocket._recv_buffer.empty()  # type: ignore[union-attr]
+        assert chat._websocket._recv_buffer.empty()  # type: ignore[union-attr]
         yield chat

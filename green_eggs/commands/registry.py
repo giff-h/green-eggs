@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import Callable, ClassVar, Dict, Iterator, List, MutableMapping, Optional
 
+from green_eggs.api import TwitchApi
+from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
 from green_eggs.types import RegisterAbleFunc
 from green_eggs.utils import validate_function_signature
@@ -12,14 +14,15 @@ class CommandRunner:
     command_keywords: ClassVar[List[str]] = ['api', 'channel', 'message']
 
     def __init__(self, command_func: RegisterAbleFunc):
-        self.command_func = command_func
-        self.func_keywords = [p.name for p in validate_function_signature(command_func, self.command_keywords)]
+        self._command_func: RegisterAbleFunc = command_func
+        self._func_keywords: List[str] = [
+            p.name for p in validate_function_signature(command_func, self.command_keywords)
+        ]
 
-    def accepts(self, keyword: str) -> bool:
-        return keyword in self.func_keywords
-
-    async def run(self, **kwargs) -> Optional[str]:
-        output = self.command_func(**kwargs)
+    async def run(self, *, api: TwitchApi, channel: Channel, message: PrivMsg) -> Optional[str]:
+        kwargs = dict(api=api, channel=channel, message=message)
+        kwargs = {k: v for k, v in kwargs.items() if k in self._func_keywords}
+        output = self._command_func(**kwargs)
         if output is None or isinstance(output, str):
             return output
         else:
@@ -30,24 +33,24 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
     def __init__(self):
         super().__init__()
 
-        self.__commands: Dict[CommandTrigger, CommandRunner] = dict()
+        self._commands: Dict[CommandTrigger, CommandRunner] = dict()
 
     def __setitem__(self, k: CommandTrigger, v: CommandRunner) -> None:
-        self.__commands[k] = v
+        self._commands[k] = v
 
     def __delitem__(self, k: CommandTrigger) -> None:
-        del self.__commands[k]
+        del self._commands[k]
 
     def __getitem__(self, k: CommandTrigger) -> CommandRunner:
-        return self.__commands[k]
+        return self._commands[k]
 
     def __len__(self) -> int:
-        return len(self.__commands)
+        return len(self._commands)
 
     def __iter__(self) -> Iterator[CommandTrigger]:
-        return iter(self.__commands)
+        return iter(self._commands)
 
-    def __lookup_gen(self, message: PrivMsg) -> Iterator[CommandRunner]:
+    def _lookup_gen(self, message: PrivMsg) -> Iterator[CommandRunner]:
         for t, f in self.items():
             if t.check(message):
                 yield f
@@ -70,7 +73,7 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
         :return: The list of command runners that matched the message
         :rtype: List[CommandRunner]
         """
-        return list(self.__lookup_gen(message))
+        return list(self._lookup_gen(message))
 
     def decorator(
         self,
@@ -98,4 +101,4 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
         :return: The maybe first command runner that matched the message
         :rtype: CommandRunner or None
         """
-        return next(self.__lookup_gen(message), None)
+        return next(self._lookup_gen(message), None)

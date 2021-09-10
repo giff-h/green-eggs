@@ -82,20 +82,20 @@ def test_and_trigger_empty():
 def test_and_trigger_single():
     internal = FirstWordTrigger('')
     external = AndTrigger(internal)
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_and_trigger_single_with_empty():
     internal = FirstWordTrigger('')
     empty = AndTrigger()
     external = internal & empty
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_and_trigger_unique():
     internal = FirstWordTrigger('')
     external = internal & internal
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_and_trigger_nested():
@@ -109,7 +109,7 @@ def test_and_trigger_nested():
     three_or_four = three | four
     empty_or = OrTrigger()
     external = not_and & empty & one_and_two & empty_or & three_or_four
-    assert external.triggers == sorted((not_and, one, two, three_or_four), key=hash)
+    assert external._triggers == sorted((not_and, one, two, three_or_four), key=hash)
 
 
 def test_or_trigger_empty():
@@ -120,20 +120,20 @@ def test_or_trigger_empty():
 def test_or_trigger_single():
     internal = FirstWordTrigger('')
     external = OrTrigger(internal)
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_or_trigger_single_with_empty():
     internal = FirstWordTrigger('')
     empty = OrTrigger()
     external = internal | empty
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_or_trigger_unique():
     internal = FirstWordTrigger('')
     external = internal | internal
-    assert external.triggers == [internal]
+    assert external._triggers == [internal]
 
 
 def test_or_trigger_nested():
@@ -147,7 +147,7 @@ def test_or_trigger_nested():
     three_and_four = three & four
     empty_and = AndTrigger()
     external = not_or | empty | one_or_two | empty_and | three_and_four
-    assert external.triggers == sorted((not_or, one, two, three_and_four), key=hash)
+    assert external._triggers == sorted((not_or, one, two, three_and_four), key=hash)
 
 
 # REGISTRY
@@ -165,7 +165,7 @@ def test_registry():
     registry[AndTrigger()] = CommandRunner(_command_two)
     assert len(registry) == 1
     assert list(registry) == [AndTrigger()]
-    assert registry[AndTrigger()].command_func is _command_two
+    assert registry[AndTrigger()]._command_func is _command_two
     del registry[AndTrigger()]
     try:
         c = registry[AndTrigger()]
@@ -190,7 +190,7 @@ def test_registry_all():
     registry[FirstWordTrigger('two')] = CommandRunner(_command_two)
     registry[SenderIsModTrigger()] = CommandRunner(_command_three)
     commands = registry.all(priv_msg(handle_able_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)))
-    assert [r.command_func for r in commands] == [_command_one, _command_three]
+    assert [r._command_func for r in commands] == [_command_one, _command_three]
 
 
 def test_registry_all_empty():
@@ -207,7 +207,7 @@ def test_registry_decorator():
     wrapper = registry.decorator(FirstWordTrigger('one'))
     result = wrapper(_command)
     assert result is _command
-    assert registry[FirstWordTrigger('one')].command_func is result
+    assert registry[FirstWordTrigger('one')]._command_func is result
 
 
 def test_registry_decorator_with_sync():
@@ -219,8 +219,8 @@ def test_registry_decorator_with_sync():
     result = wrapper(_command)
     assert result is _command
     registered = registry[FirstWordTrigger('three')]
-    assert registered.command_func is result
-    assert not inspect.iscoroutinefunction(registered.command_func)
+    assert registered._command_func is result
+    assert not inspect.iscoroutinefunction(registered._command_func)
 
 
 def test_registry_decorator_with_async():
@@ -232,8 +232,8 @@ def test_registry_decorator_with_async():
     result = wrapper(_command)
     assert result is _command
     registered = registry[FirstWordTrigger('three')]
-    assert registered.command_func is result
-    assert inspect.iscoroutinefunction(registered.command_func)
+    assert registered._command_func is result
+    assert inspect.iscoroutinefunction(registered._command_func)
 
 
 def test_registry_rejects_func():
@@ -289,9 +289,9 @@ async def test_registry_decorator_with_factory():
     result = wrapper(_command)
     assert result is _command
     runner = registry[AndTrigger()]
-    assert runner.accepts('message')
-    assert not runner.accepts('api')
-    run_result = await registry[AndTrigger()].run(message='1')
+    assert 'message' in runner._func_keywords
+    assert 'api' not in runner._func_keywords
+    run_result = await registry[AndTrigger()].run(api=None, channel=None, message='1')  # type: ignore
     assert run_result == '12'
 
 
@@ -313,9 +313,9 @@ async def test_registry_decorator_async_with_factory():
     result = wrapper(_command)
     assert result is _command
     runner = registry[AndTrigger()]
-    assert runner.accepts('api')
-    assert not runner.accepts('message')
-    run_result = await registry[AndTrigger()].run(api='1')
+    assert 'api' in runner._func_keywords
+    assert 'message' not in runner._func_keywords
+    run_result = await registry[AndTrigger()].run(api='1', channel=None, message=None)  # type: ignore
     assert run_result == '12'
 
 
@@ -334,7 +334,7 @@ def test_registry_find():
     registry[FirstWordTrigger('two')] = CommandRunner(_two)
     registry[SenderIsModTrigger()] = CommandRunner(_three)
     command = registry.find(priv_msg(handle_able_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)))
-    assert command.command_func is _one
+    assert command._command_func is _one
 
 
 def test_registry_find_empty():

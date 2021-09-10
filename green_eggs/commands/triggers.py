@@ -24,13 +24,13 @@ class CommandTrigger(Hashable, abc.ABC):
 
 class LogicTrigger(CommandTrigger, abc.ABC):
     @classmethod
-    def __flatten(cls, triggers: Iterable[CommandTrigger]) -> Iterator[Iterable[CommandTrigger]]:
+    def _flatten(cls, triggers: Iterable[CommandTrigger]) -> Iterator[Iterable[CommandTrigger]]:
         for trigger in triggers:
             if isinstance(trigger, cls):
                 # a & (b & c) & d ≡ a & b & c & d
                 # a | (b | c) | d ≡ a | b | c | d
-                yield trigger.triggers
-            elif isinstance(trigger, LogicTrigger) and not len(trigger.triggers):
+                yield trigger._triggers
+            elif isinstance(trigger, LogicTrigger) and not len(trigger._triggers):
                 yield tuple()
             else:
                 yield (trigger,)
@@ -38,12 +38,12 @@ class LogicTrigger(CommandTrigger, abc.ABC):
     def __init__(self, *triggers: CommandTrigger):
         # set because a & a ≡ a and a | a ≡ a
         # sorted because a & b ≡ b & a and a | b ≡ b | a
-        self.triggers: List[CommandTrigger] = sorted(
-            set(itertools.chain.from_iterable(self.__flatten(triggers))), key=hash
+        self._triggers: List[CommandTrigger] = sorted(
+            set(itertools.chain.from_iterable(self._flatten(triggers))), key=hash
         )
 
     def __hash__(self) -> int:
-        return hash((type(self), tuple(self.triggers)))
+        return hash((type(self), tuple(self._triggers)))
 
 
 class AndTrigger(LogicTrigger):
@@ -55,7 +55,7 @@ class AndTrigger(LogicTrigger):
     """
 
     def check(self, message: PrivMsg) -> bool:
-        return bool(len(self.triggers)) and all(trigger.check(message) for trigger in self.triggers)
+        return bool(len(self._triggers)) and all(trigger.check(message) for trigger in self._triggers)
 
 
 class OrTrigger(LogicTrigger):
@@ -67,7 +67,7 @@ class OrTrigger(LogicTrigger):
     """
 
     def check(self, message: PrivMsg) -> bool:
-        return bool(len(self.triggers)) and any(trigger.check(message) for trigger in self.triggers)
+        return bool(len(self._triggers)) and any(trigger.check(message) for trigger in self._triggers)
 
 
 class FirstWordTrigger(CommandTrigger):
@@ -78,15 +78,15 @@ class FirstWordTrigger(CommandTrigger):
     """
 
     def __init__(self, value: str, case_sensitive=False):
-        self.value = value
-        self.case_sensitive = case_sensitive
+        self._value: str = value
+        self._case_sensitive: bool = case_sensitive
 
     def __hash__(self) -> int:
-        return hash((type(self), self.value, self.case_sensitive))
+        return hash((type(self), self._value, self._case_sensitive))
 
     def check(self, message: PrivMsg) -> bool:
-        word = message.words[0] if self.case_sensitive else message.words[0].lower()
-        value = self.value if self.case_sensitive else self.value.lower()
+        word = message.words[0] if self._case_sensitive else message.words[0].lower()
+        value = self._value if self._case_sensitive else self._value.lower()
         return word == value
 
 
