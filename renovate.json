@@ -1,5 +1,15 @@
 {
-  "extends": [
-    "config:base"
-  ]
+  "branchTopic": "{{{depNameSanitized}}}-{{{newVersion}}}",
+  "commitMessageExtra": "from {{{currentVersion}}} to {{{newVersion}}}",
+  "commitMessageTopic": "{{depName}}",
+  "dependencyDashboard": true,
+  "extends": [":ignoreModulesAndTests"],
+  "labels": ["auto dependency"],
+  "rangeStrategy": "update-lockfile",
+  "rebaseWhen": "behind-base-branch",
+  "schedule": ["after 10pm and before 5am"],
+  "semanticCommits": "disabled",
+  "separateMajorMinor": false,
+  "stabilityDays": 3,
+  "timezone": "America/New_York"
 }
