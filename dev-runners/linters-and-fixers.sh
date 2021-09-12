@@ -9,11 +9,10 @@ if [ "$0" != "-bash" ]; then
 
   ci_lint_check_test () {
     cd "${REPO_BASE_DIR}"
-    poetry run mypy .
-    poetry run stubgen -p green_eggs -o stubs
     poetry run docformatter --check ${DOCFORMATTER_OPTS} .
     poetry run isort --check .
     poetry run black --check .
+    poetry run mypy .
 
     rm -rf htmlcov/
     poetry run nox -s tests_pyenv # FIXME Replace with CI session once CI is setup
@@ -21,11 +20,11 @@ if [ "$0" != "-bash" ]; then
 
   local_lint_clean_test () {
     cd "${REPO_BASE_DIR}"
-    poetry run mypy .
     poetry run stubgen -p green_eggs -o stubs
     poetry run docformatter ${DOCFORMATTER_OPTS} .
     poetry run isort .
     poetry run black .
+    poetry run mypy .
 
     rm -rf htmlcov/
     poetry run nox -s tests_pyenv

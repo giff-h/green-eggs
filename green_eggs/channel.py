@@ -13,13 +13,22 @@ class Channel:
     def __init__(self, *, login: str, api: TwitchApi, chat: TwitchChatClient, logger: Logger):
         self._api: TwitchApi = api
         self._api_results_cache: Dict[str, Dict[str, Any]] = defaultdict(dict)
-        self._broadcaster_id: str = ''
         self._chat: TwitchChatClient = chat
         self._last_five_for_user_id: Dict[str, Deque[PrivMsg]] = defaultdict(lambda: deque(maxlen=5))
         self._logger: Logger = logger
         self._login: str = login.lower()
+        self._room_state: Optional[RoomState] = None
         self._users_in_channel: Set[str] = set()
         self._users_in_channel_tmp: Set[str] = set()
+
+    @property
+    def broadcaster_id(self) -> str:
+        """
+        Get the ID of the broadcaster user.
+
+        :return: ID from the room state, or empty string before it's been set
+        """
+        return '' if self._room_state is None else self._room_state.tags.room_id
 
     def handle_code_353(self, code353: Code353):
         """
@@ -70,7 +79,7 @@ class Channel:
         if self._login != room_state.where:
             raise ValueError(f'Channel for {self._login} was given a room state from {room_state.where}')
 
-        self._broadcaster_id = room_state.tags.room_id
+        self._room_state = room_state
 
     def is_user_in_channel(self, user_login: str) -> bool:
         """
@@ -93,12 +102,12 @@ class Channel:
         :rtype: bool
         """
         if user_id in self._last_five_for_user_id:
-            return any(m.is_subscribed for m in self._last_five_for_user_id[user_id])
+            return any(m.is_sender_subscribed for m in self._last_five_for_user_id[user_id])
         else:
             if 'is_subscribed' in self._api_results_cache[user_id]:
                 return self._api_results_cache[user_id]['is_subscribed']
 
-            results = await self._api.check_user_subscription(broadcaster_id=self._broadcaster_id, user_id=user_id)
+            results = await self._api.check_user_subscription(broadcaster_id=self.broadcaster_id, user_id=user_id)
             is_subscribed = len(results['data']) > 0 and 'tier' in results['data'][0]
             self._api_results_cache[user_id]['is_subscribed'] = is_subscribed
             return is_subscribed

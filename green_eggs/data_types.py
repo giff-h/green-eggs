@@ -189,16 +189,15 @@ class UserSentNoticeBaseTags(BaseTags, abc.ABC):
 @dataclass(frozen=True)
 class ClearChatTags(BaseTags):
     ban_duration: Optional[int] = None
-    room_id: Optional[int] = None
+    room_id: Optional[str] = None
     target_msg_id: Optional[str] = None
-    target_user_id: Optional[int] = None
+    target_user_id: Optional[str] = None
     tmi_sent_ts: Optional[datetime.datetime] = None
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
-        for f_name in ('ban_duration', 'room_id', 'target_user_id'):
-            if f_name in kwargs:
-                kwargs[f_name] = int(kwargs[f_name])
+        if 'ban_duration' in kwargs:
+            kwargs['ban_duration'] = int(kwargs['ban_duration'])
 
         if 'tmi_sent_ts' in kwargs and kwargs['tmi_sent_ts'] is not None:
             kwargs['tmi_sent_ts'] = datetime.datetime.utcfromtimestamp(int(kwargs['tmi_sent_ts']) / 1000)
@@ -299,14 +298,11 @@ class UserNoticeMessageParams(BaseTags):
                 'cumulative_months',
                 'gift_month_being_redeemed',
                 'gift_months',
-                'gifter_id',
                 'mass_gift_count',
                 'months',
                 'multimonth_duration',
                 'multimonth_tenure',
-                'prior_gifter_id',
                 'promo_gift_total',
-                'recipient_id',
                 'selected_count',
                 'sender_count',
                 'streak_months',
@@ -344,7 +340,7 @@ class UserNoticeMessageParams(BaseTags):
     gift_month_being_redeemed: Optional[int] = None
     gift_months: Optional[int] = None
     gift_theme: Optional[str] = None
-    gifter_id: Optional[int] = None
+    gifter_id: Optional[str] = None
     gifter_login: Optional[str] = None
     gifter_name: Optional[str] = None
     login: Optional[str] = None
@@ -355,13 +351,12 @@ class UserNoticeMessageParams(BaseTags):
     origin_id: Optional[str] = None
     prior_gifter_anonymous: Optional[bool] = None
     prior_gifter_display_name: Optional[str] = None
-    prior_gifter_id: Optional[int] = None
     prior_gifter_user_name: Optional[str] = None
     profile_image_url: Optional[str] = None
     promo_gift_total: Optional[int] = None
     promo_name: Optional[str] = None
     recipient_display_name: Optional[str] = None
-    recipient_id: Optional[int] = None
+    recipient_id: Optional[str] = None
     recipient_user_name: Optional[str] = None
     ritual_name: Optional[str] = None
     selected_count: Optional[int] = None
@@ -432,7 +427,7 @@ class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags):
 
 @dataclass(frozen=True)
 class WhisperTags(UserMessageBaseTags):
-    message_id: int
+    message_id: str
     thread_id: str
 
 
@@ -443,19 +438,16 @@ class WhisperTags(UserMessageBaseTags):
 class HandleAble(abc.ABC):
     # `default_timestamp` is not from twitch, but is set by the IRC client when the data was received
     default_timestamp: datetime.datetime = field(compare=False)
-    unhandled: Dict[str, str]
     raw: str = field(compare=False)
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> 'HandleAble':
-        unhandled = {f_name: kwargs.pop(f_name) for f_name in set(kwargs.keys()) - set(f.name for f in fields(cls))}
-        return cls(unhandled=unhandled, **kwargs)
+        return cls(**kwargs)
 
     def as_original_match_dict(self) -> Dict[str, Any]:
         data = {
             f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags' or not isinstance(self, HasTags)
         }
-        data.update(data.pop('unhandled'))
         if isinstance(self, HasTags):
             data['tags'] = self.tags.raw
 
@@ -594,9 +586,9 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         return self.who == user or self.tags.display_name.lower() == user
 
     @property
-    def is_subscribed(self) -> bool:
+    def is_sender_subscribed(self) -> bool:
         """
-        Is the user indicated as subscribed in the channel this message was sent.
+        Is the sender indicated as subscribed in the channel this message was sent.
 
         :return: True if the message has a subscriber badge
         :rtype: bool

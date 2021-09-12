@@ -26,10 +26,6 @@ token = secrets['token']
 
 
 def record_unhandled(data_type: Union[HandleAble, BaseTags]):
-    if len(data_type.unhandled):
-        unhandled_for_data_type = unhandled_bits[type(data_type)]
-        for k, v in data_type.unhandled.items():
-            unhandled_for_data_type[k].add(v)
     if isinstance(data_type, HasTags):
         record_unhandled(data_type.tags)
     if isinstance(data_type, UserNoticeTags):

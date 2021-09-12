@@ -6,13 +6,13 @@ from green_eggs.data_types import Code353, JoinPart, PrivMsg, PrivMsgTags, RoomS
 
 
 def code_353(*users: str, **kwargs) -> Code353:
-    default_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', unhandled=dict(), where='', who='')
+    default_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', where='', who='')
     default_kwargs.update(kwargs)
     return Code353(**default_kwargs, users=list(users))  # type: ignore[arg-type]
 
 
 def join_part(is_join=True, **kwargs) -> JoinPart:
-    default_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', unhandled=dict(), where='', who='')
+    default_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', where='', who='')
     default_kwargs.update(kwargs)
     default_kwargs['action'] = 'JOIN' if is_join else 'PART'
     return JoinPart(**default_kwargs)  # type: ignore[arg-type]
@@ -45,7 +45,6 @@ def priv_msg(
         message='',
         raw='',
         tags=tags,
-        unhandled=dict(),
         where='',
         who='',
     )
@@ -73,9 +72,7 @@ def room_state(
         default_tags_kwargs.update(tags_kwargs)
     tags = RoomStateTags(**default_tags_kwargs)  # type: ignore[arg-type]
 
-    default_handle_able_kwargs = dict(
-        default_timestamp=datetime.datetime.utcnow(), raw='', tags=tags, unhandled=dict(), where=''
-    )
+    default_handle_able_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', tags=tags, where='')
     if handle_able_kwargs:
         default_handle_able_kwargs.update(handle_able_kwargs)
     return RoomState(**default_handle_able_kwargs)  # type: ignore[arg-type]

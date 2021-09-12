@@ -3,7 +3,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs.api import TwitchApi
-from tests import api  # noqa
+from tests.fixtures import *  # noqa
 
 
 @pytest.mark.asyncio

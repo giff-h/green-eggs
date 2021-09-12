@@ -7,7 +7,8 @@ import websockets
 
 from green_eggs.client import TwitchChatClient, ensure_str
 from green_eggs.exceptions import ChannelPresenceRaceCondition
-from tests import client, logger, mock_socket  # noqa
+from tests import logger, mock_socket
+from tests.fixtures import *  # noqa
 
 
 def none_future():

@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 from .registry import CommandRegistry, CommandRunner
-from .triggers import AndTrigger, CommandTrigger, FirstWordTrigger, LogicTrigger, OrTrigger, SenderIsModTrigger
+from .triggers import (
+    AndTrigger,
+    CommandTrigger,
+    FirstWordTrigger,
+    LogicTrigger,
+    OrTrigger,
+    SenderIsModTrigger,
+    SenderIsSubscribedTrigger,
+)
 
 __all__ = (
     'AndTrigger',
@@ -11,4 +19,5 @@ __all__ = (
     'LogicTrigger',
     'OrTrigger',
     'SenderIsModTrigger',
+    'SenderIsSubscribedTrigger',
 )

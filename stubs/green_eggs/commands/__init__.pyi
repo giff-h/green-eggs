@@ -6,3 +6,4 @@ from .triggers import FirstWordTrigger as FirstWordTrigger
 from .triggers import LogicTrigger as LogicTrigger
 from .triggers import OrTrigger as OrTrigger
 from .triggers import SenderIsModTrigger as SenderIsModTrigger
+from .triggers import SenderIsSubscribedTrigger as SenderIsSubscribedTrigger

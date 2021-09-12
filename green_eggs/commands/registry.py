@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Callable, ClassVar, Dict, Iterator, List, MutableMapping, Optional
+from typing import AsyncIterator, Callable, ClassVar, Dict, Iterator, List, MutableMapping, Optional
 
 from green_eggs.api import TwitchApi
 from green_eggs.channel import Channel
@@ -50,9 +50,9 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
     def __iter__(self) -> Iterator[CommandTrigger]:
         return iter(self._commands)
 
-    def _lookup_gen(self, message: PrivMsg) -> Iterator[CommandRunner]:
+    async def _lookup_gen(self, message: PrivMsg, channel: Channel) -> AsyncIterator[CommandRunner]:
         for t, f in self.items():
-            if t.check(message):
+            if await t.check(message, channel):
                 yield f
 
     def add(self, trigger: CommandTrigger, command_func: RegisterAbleFunc):
@@ -65,15 +65,16 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
         """
         self[trigger] = CommandRunner(command_func)
 
-    def all(self, message: PrivMsg) -> List[CommandRunner]:
+    async def all(self, message: PrivMsg, channel: Channel) -> List[CommandRunner]:
         """
         Returns all command functions that were triggered by the message.
 
         :param PrivMsg message: Message from Twitch
+        :param Channel channel: The channel the message is from
         :return: The list of command runners that matched the message
         :rtype: List[CommandRunner]
         """
-        return list(self._lookup_gen(message))
+        return [runner async for runner in self._lookup_gen(message, channel)]
 
     def decorator(
         self,
@@ -93,12 +94,15 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
 
         return wrapper
 
-    def find(self, message: PrivMsg) -> Optional[CommandRunner]:
+    async def find(self, message: PrivMsg, channel: Channel) -> Optional[CommandRunner]:
         """
         Returns the first command function that was triggered by the message.
 
         :param PrivMsg message: Message from Twitch
+        :param Channel channel: The channel the message is from
         :return: The maybe first command runner that matched the message
         :rtype: CommandRunner or None
         """
-        return next(self._lookup_gen(message), None)
+        async for runner in self._lookup_gen(message, channel):
+            return runner
+        return None

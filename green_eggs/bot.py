@@ -22,7 +22,7 @@ async def _main_handler(
     logger: Logger,
     raw: str,
     default_timestamp: datetime.datetime,
-):
+) -> Optional[dt.HandleAble]:
     handle_able: Optional[dt.HandleAble] = None
 
     for handle_type, pattern in dt.patterns.items():
@@ -33,12 +33,8 @@ async def _main_handler(
 
     if handle_able is None:
         logger.warning(f'Incoming message could not be parsed: {raw!r}')
-        return
+        return None
 
-    if len(handle_able.unhandled):
-        type_name = type(handle_able).__name__
-        unhandled = handle_able.unhandled
-        logger.warning(f'Unhandled on {type_name}: {unhandled!r}')
     if isinstance(handle_able, dt.HasTags):
         if len(handle_able.tags.unhandled):
             type_name = type(handle_able.tags).__name__
@@ -52,7 +48,7 @@ async def _main_handler(
 
     if isinstance(handle_able, dt.PrivMsg):
         channel.handle_message(handle_able)
-        command = commands.find(handle_able)
+        command = await commands.find(handle_able, channel)
         if command is not None:
             result = await command.run(api=api, channel=channel, message=handle_able)
             if isinstance(result, str):
@@ -91,38 +87,42 @@ async def _main_handler(
     elif isinstance(handle_able, dt.Whisper):
         pass
 
+    return handle_able
+
 
 class ChatBot:
     def __init__(self, *, channel: str):
         self._channel: str = channel
         self._commands = CommandRegistry()
 
-    def register_basic_commands(self, commands: Mapping[str, str]):
+    def register_basic_commands(self, commands: Mapping[str, str], *, case_sensitive=False):
         """
         Register basic message response commands.
 
         :param commands: Mapping of invoke to response strings
+        :param bool case_sensitive: Whether the command should trigger on exact case or any case
         """
         for invoke, response in commands.items():
-            trigger = FirstWordTrigger(invoke, case_sensitive=False)
+            trigger = FirstWordTrigger(invoke, case_sensitive)
             self._commands.add(trigger, lambda: response)
 
-    def register_caster_command(self, *, invoke: str):
+    def register_caster_command(self, invoke: str, *, case_sensitive=False):
         """
         Decorator to register a function as a caster command handler.
 
-        :param invoke: The command part in the chat message
+        :param str invoke: The command part in the chat message
+        :param bool case_sensitive: Whether the command should trigger on exact case or any case
         :return: The decorator
         """
-        trigger = FirstWordTrigger(invoke, case_sensitive=False) & SenderIsModTrigger()
+        trigger = FirstWordTrigger(invoke, case_sensitive) & SenderIsModTrigger()
 
         def factory(callback: RegisterAbleFunc, callback_keywords: List[str]) -> RegisterAbleFunc:
             async def command(api: TwitchApi, channel: Channel, message: dt.PrivMsg) -> Optional[str]:
-                if not len(message.words):
+                if len(message.words) <= 1:
                     return 'I need a name for that'
 
                 callback_kwargs = dict()
-                name = message.words[0]
+                name = message.words[1]
                 last_message = channel.user_latest_message(name)
                 if last_message is None:
                     user_result = await api.get_users(login=name.lstrip('@'))
@@ -162,17 +162,18 @@ class ChatBot:
             trigger, target_keywords=['name', 'link', 'game', 'api_result'], command_factory=factory
         )
 
-    def register_command(self, *, invoke: str):
+    def register_command(self, invoke: str, *, case_sensitive=False):
         """
         Decorator to register a function as a command handler.
 
-        :param invoke: The command part in the chat message
+        :param str invoke: The command part in the chat message
+        :param bool case_sensitive: Whether the command should trigger on exact case or any case
         :return: The decorator
         """
-        trigger = FirstWordTrigger(invoke, case_sensitive=False)
+        trigger = FirstWordTrigger(invoke, case_sensitive)
         return self._commands.decorator(trigger)
 
-    def run_sync(self, *, username: str, token: str, client_id: str):
+    def run_sync(self, *, username: str, token: str, client_id: str):  # pragma: no cover
         """
         Main synchronous blocking function to run the bot after configuring.
 
@@ -192,7 +193,7 @@ class ChatBot:
             pending = asyncio.all_tasks(loop=loop)
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
-    async def run_async(self, *, username: str, token: str, client_id: str):
+    async def run_async(self, *, username: str, token: str, client_id: str):  # pragma: no cover
         """
         Main async forever loop to run the bot after configuring.
 

@@ -55,9 +55,9 @@ class UserSentNoticeBaseTags(BaseTags, abc.ABC):
 
 class ClearChatTags(BaseTags):
     ban_duration: Optional[int]
-    room_id: Optional[int]
+    room_id: Optional[str]
     target_msg_id: Optional[str]
-    target_user_id: Optional[int]
+    target_user_id: Optional[str]
     tmi_sent_ts: Optional[datetime.datetime]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
@@ -114,7 +114,7 @@ class UserNoticeMessageParams(BaseTags):
     gift_month_being_redeemed: Optional[int]
     gift_months: Optional[int]
     gift_theme: Optional[str]
-    gifter_id: Optional[int]
+    gifter_id: Optional[str]
     gifter_login: Optional[str]
     gifter_name: Optional[str]
     login: Optional[str]
@@ -125,13 +125,12 @@ class UserNoticeMessageParams(BaseTags):
     origin_id: Optional[str]
     prior_gifter_anonymous: Optional[bool]
     prior_gifter_display_name: Optional[str]
-    prior_gifter_id: Optional[int]
     prior_gifter_user_name: Optional[str]
     profile_image_url: Optional[str]
     promo_gift_total: Optional[int]
     promo_name: Optional[str]
     recipient_display_name: Optional[str]
-    recipient_id: Optional[int]
+    recipient_id: Optional[str]
     recipient_user_name: Optional[str]
     ritual_name: Optional[str]
     selected_count: Optional[int]
@@ -163,12 +162,11 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
 class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags): ...
 
 class WhisperTags(UserMessageBaseTags):
-    message_id: int
+    message_id: str
     thread_id: str
 
 class HandleAble(abc.ABC):
     default_timestamp: datetime.datetime
-    unhandled: Dict[str, str]
     raw: str
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
@@ -225,7 +223,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
     tags: PrivMsgTags
     def is_from_user(self, user: str) -> bool: ...
     @property
-    def is_subscribed(self) -> bool: ...
+    def is_sender_subscribed(self) -> bool: ...
     @property
     def words(self) -> List[str]: ...
 

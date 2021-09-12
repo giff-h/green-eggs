@@ -4,6 +4,7 @@ from collections.abc import Hashable
 import itertools
 from typing import Iterable, Iterator, List
 
+from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
 
 
@@ -18,7 +19,7 @@ class CommandTrigger(Hashable, abc.ABC):
         return OrTrigger(self, other)
 
     @abc.abstractmethod
-    def check(self, message: PrivMsg) -> bool:
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
         raise NotImplementedError()
 
 
@@ -54,8 +55,8 @@ class AndTrigger(LogicTrigger):
     Construct using the `&` operator on other triggers like `a & b`.
     """
 
-    def check(self, message: PrivMsg) -> bool:
-        return bool(len(self._triggers)) and all(trigger.check(message) for trigger in self._triggers)
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
+        return bool(len(self._triggers)) and all(await trigger.check(message, channel) for trigger in self._triggers)
 
 
 class OrTrigger(LogicTrigger):
@@ -66,8 +67,8 @@ class OrTrigger(LogicTrigger):
     Construct using the `|` operator on other triggers like `a | b`.
     """
 
-    def check(self, message: PrivMsg) -> bool:
-        return bool(len(self._triggers)) and any(trigger.check(message) for trigger in self._triggers)
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
+        return bool(len(self._triggers)) and any(await trigger.check(message, channel) for trigger in self._triggers)
 
 
 class FirstWordTrigger(CommandTrigger):
@@ -84,7 +85,7 @@ class FirstWordTrigger(CommandTrigger):
     def __hash__(self) -> int:
         return hash((type(self), self._value, self._case_sensitive))
 
-    def check(self, message: PrivMsg) -> bool:
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
         word = message.words[0] if self._case_sensitive else message.words[0].lower()
         value = self._value if self._case_sensitive else self._value.lower()
         return word == value
@@ -98,5 +99,17 @@ class SenderIsModTrigger(CommandTrigger):
     def __hash__(self) -> int:
         return hash((type(self),))
 
-    def check(self, message: PrivMsg) -> bool:
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
         return message.tags.mod or 'broadcaster' in message.tags.badges
+
+
+class SenderIsSubscribedTrigger(CommandTrigger):
+    """
+    Command trigger that passes the check if the sender is subscribed.
+    """
+
+    def __hash__(self) -> int:
+        return hash((type(self),))
+
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
+        return await channel.is_user_subscribed(message.tags.user_id)

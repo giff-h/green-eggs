@@ -3,40 +3,10 @@ import asyncio
 import contextlib
 
 from aiologger import Logger
-import pytest
-from pytest_mock import MockerFixture
 
-from green_eggs import constants as const
-from green_eggs.api import TwitchApi
-from green_eggs.client import TwitchChatClient
+from green_eggs.constants import EXPECTED_AUTH_CODES
 
 logger = Logger.with_default_handlers(name='testing')
-
-
-class MockResponse:
-    def __init__(self, return_json=None):
-        self._return_json = return_json or dict(foo='bar')
-
-    async def json(self):
-        return self._return_json
-
-    @staticmethod
-    def raise_for_status():
-        pass
-
-
-@contextlib.asynccontextmanager
-async def response_context(**kwargs):
-    yield MockResponse(**kwargs)
-
-
-@pytest.fixture
-async def api(mocker: MockerFixture):
-    mocker.patch('aiohttp.ClientSession.request', return_value=response_context())
-
-    async with TwitchApi(client_id='test client', token='test token', logger=logger) as api_client:
-        api_client._base_url = 'base/'
-        yield api_client
 
 
 class MockSocket:
@@ -88,7 +58,7 @@ class MockSocket:
         if self._auth_pass and self._auth_nick:
             self._auth_pass = self._auth_nick = False
             if 'auth' not in self._ignore:
-                for code in const.EXPECTED_AUTH_CODES:
+                for code in EXPECTED_AUTH_CODES:
                     await self._recv_buffer.put(f':tmi.twitch.tv {code} twisty maze')
 
         if self._cap_req:
@@ -103,11 +73,18 @@ async def mock_socket(**k):
     return MockSocket(**k)
 
 
-@pytest.fixture
-async def client(mocker: MockerFixture):
-    mocker.patch('websockets.connect', return_value=mock_socket())
+class MockResponse:
+    def __init__(self, return_json=None):
+        self._return_json = return_json or dict(foo='bar')
 
-    async with TwitchChatClient(username='test_username', token='test_token', logger=logger) as chat:
-        # noinspection PyProtectedMember
-        assert chat._websocket._recv_buffer.empty()  # type: ignore[union-attr]
-        yield chat
+    async def json(self):
+        return self._return_json
+
+    @staticmethod
+    def raise_for_status():
+        pass
+
+
+@contextlib.asynccontextmanager
+async def response_context(**kwargs):
+    yield MockResponse(**kwargs)
