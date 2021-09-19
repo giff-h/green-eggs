@@ -102,9 +102,17 @@ class ChatBot:
         :param commands: Mapping of invoke to response strings
         :param bool case_sensitive: Whether the command should trigger on exact case or any case
         """
+
+        # This factory is necessary to keep the namespace of `output` from getting overwritten in the loop
+        def factory(output):
+            def basic():
+                return output
+
+            return basic
+
         for invoke, response in commands.items():
             trigger = FirstWordTrigger(invoke, case_sensitive)
-            self._commands.add(trigger, lambda: response)
+            self._commands.add(trigger, factory(response))
 
     def register_caster_command(self, invoke: str, *, case_sensitive=False):
         """
@@ -146,7 +154,8 @@ class ChatBot:
                 if 'link' in callback_keywords:
                     callback_kwargs['link'] = 'https://twitch.tv/' + user_login
                 if 'game' in callback_keywords:
-                    callback_kwargs['game'] = stream['game_name']
+                    game = stream['game_name']
+                    callback_kwargs['game'] = None if game == '' else game
                 if 'api_result' in callback_keywords:
                     callback_kwargs['api_result'] = stream
 
@@ -205,6 +214,7 @@ class ChatBot:
 
         async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
             async with TwitchApi(client_id=client_id, token=token, logger=logger) as api:
+                await chat.join(self._channel)
                 channel = Channel(login=self._channel, api=api, chat=chat, logger=logger)
 
                 async for raw, default_timestamp in chat.incoming():

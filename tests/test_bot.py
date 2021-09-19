@@ -227,6 +227,22 @@ async def test_register_basic(api: TwitchApi, channel: Channel):
 
 
 @pytest.mark.asyncio
+async def test_register_basic_many(api: TwitchApi, channel: Channel):
+    bot = ChatBot(channel='channel_user')
+    bot.register_basic_commands({'!one': 'Response One', '!two': 'Second Response'})
+    trigger = FirstWordTrigger('!one')
+    assert trigger in bot._commands
+    runner = bot._commands[trigger]
+    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!one')))
+    assert result == 'Response One'
+    trigger = FirstWordTrigger('!two')
+    assert trigger in bot._commands
+    runner = bot._commands[trigger]
+    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!two')))
+    assert result == 'Second Response'
+
+
+@pytest.mark.asyncio
 async def test_register_caster_with_no_name(api: TwitchApi, channel: Channel):
     bot = ChatBot(channel='channel_user')
 

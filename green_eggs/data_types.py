@@ -603,7 +603,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         :return: List of words
         :rtype: List[str]
         """
-        return self.message.strip().split()
+        return self.message.split()
 
 
 @dataclass(frozen=True)

@@ -1,8 +1,12 @@
 import abc
 from collections.abc import Hashable
+from typing import Any, AsyncGenerator
 
 from green_eggs.channel import Channel as Channel
 from green_eggs.data_types import PrivMsg as PrivMsg
+
+async def async_all(async_generator: AsyncGenerator[Any, None]) -> bool: ...
+async def async_any(async_generator: AsyncGenerator[Any, None]) -> bool: ...
 
 class CommandTrigger(Hashable, abc.ABC, metaclass=abc.ABCMeta):
     def __and__(self, other: CommandTrigger) -> AndTrigger: ...

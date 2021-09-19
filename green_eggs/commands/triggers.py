@@ -2,10 +2,24 @@
 import abc
 from collections.abc import Hashable
 import itertools
-from typing import Iterable, Iterator, List
+from typing import Any, AsyncGenerator, Iterable, Iterator, List
 
 from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
+
+
+async def async_all(async_generator: AsyncGenerator[Any, None]) -> bool:
+    async for v in async_generator:
+        if not v:
+            return False
+    return True
+
+
+async def async_any(async_generator: AsyncGenerator[Any, None]) -> bool:
+    async for v in async_generator:
+        if v:
+            return True
+    return False
 
 
 class CommandTrigger(Hashable, abc.ABC):
@@ -56,7 +70,10 @@ class AndTrigger(LogicTrigger):
     """
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        return bool(len(self._triggers)) and all(await trigger.check(message, channel) for trigger in self._triggers)
+        # noinspection PyTypeChecker
+        return bool(len(self._triggers)) and await async_all(  # type: ignore[arg-type]
+            await trigger.check(message, channel) for trigger in self._triggers
+        )
 
 
 class OrTrigger(LogicTrigger):
@@ -68,7 +85,10 @@ class OrTrigger(LogicTrigger):
     """
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        return bool(len(self._triggers)) and any(await trigger.check(message, channel) for trigger in self._triggers)
+        # noinspection PyTypeChecker
+        return bool(len(self._triggers)) and await async_any(  # type: ignore[arg-type]
+            await trigger.check(message, channel) for trigger in self._triggers
+        )
 
 
 class FirstWordTrigger(CommandTrigger):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 import re
+from typing import Optional
 
 from green_eggs import ChatBot
 from green_eggs.channel import Channel
@@ -19,7 +20,7 @@ bot.register_basic_commands(
 @bot.register_command('!roll')
 def roll(message: PrivMsg):
     dice_regex = re.compile(r'(?P<count>\d*)d(?P<sides>\d+)')
-    spec = message.words[1] if len(message.words) >= 1 else '1d20'
+    spec = message.words[1] if len(message.words) >= 2 else '1d20'
     match = dice_regex.match(spec)
     if match is not None:
         count = int(match.group('count') or 1)
@@ -53,8 +54,11 @@ async def calm(channel: Channel):
 
 
 @bot.register_caster_command('!caster')
-def caster(name: str, link: str, game: str):
-    return f'We love {name}, check them out at {link} for fun times such as {game}'
+def caster(name: str, link: str, game: Optional[str]):
+    if game is None:
+        return f'Go follow {name} at {link} they might start streaming soon :)'
+    else:
+        return f'We love {name}, check them out at {link} for fun times such as {game}'
 
 
 if __name__ == '__main__':

@@ -141,6 +141,13 @@ def test_and_trigger_nested():
 
 
 @pytest.mark.asyncio
+async def test_and_trigger_check(channel: Channel):
+    trigger = FirstWordTrigger('a') & SenderIsModTrigger()
+    message = priv_msg(handle_able_kwargs=dict(message='a'), tags_kwargs=dict(mod=True))
+    assert await trigger.check(message, channel)
+
+
+@pytest.mark.asyncio
 async def test_or_trigger_empty(channel: Channel):
     trigger = OrTrigger()
     assert not await trigger.check(priv_msg(), channel)
@@ -177,6 +184,13 @@ def test_or_trigger_nested():
     empty_and = AndTrigger()
     external = not_or | empty | one_or_two | empty_and | three_and_four
     assert external._triggers == sorted((not_or, one, two, three_and_four), key=hash)
+
+
+@pytest.mark.asyncio
+async def test_or_trigger_check(channel: Channel):
+    trigger = FirstWordTrigger('a') | SenderIsModTrigger()
+    assert await trigger.check(priv_msg(handle_able_kwargs=dict(message='a')), channel)
+    assert await trigger.check(priv_msg(handle_able_kwargs=dict(message='b'), tags_kwargs=dict(mod=True)), channel)
 
 
 # REGISTRY

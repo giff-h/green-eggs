@@ -6,6 +6,8 @@ from typing import AsyncIterator, ClassVar, Dict, List, Optional, Pattern, Tuple
 
 from aiologger import Logger
 import websockets
+from websockets.exceptions import ConnectionClosedError
+from websockets.legacy.client import WebSocketClientProtocol
 
 from green_eggs import constants as const
 from green_eggs.exceptions import ChannelPresenceRaceCondition
@@ -57,7 +59,7 @@ class TwitchChatClient:
         self._message_buffer: 'asyncio.Queue[BufferData]' = asyncio.Queue()
         self._token: str = format_oauth(token)
         self._username: str = username.lower()
-        self._websocket: Optional[websockets.WebSocketClientProtocol] = None
+        self._websocket: Optional[WebSocketClientProtocol] = None
 
     async def buffer_messages(self):
         """
@@ -80,7 +82,7 @@ class TwitchChatClient:
                     await self._message_buffer.put((line, now))
             except asyncio.CancelledError:
                 break
-            except websockets.ConnectionClosedError:
+            except ConnectionClosedError:
                 self._logger.debug('Caught a closed connection. Reconnecting...')
                 await self.connect()
                 await self.initialize()
@@ -94,7 +96,7 @@ class TwitchChatClient:
         :raises Exception: from the websocket connect if any happened
         """
         try:
-            self._websocket = await websockets.connect(self.host, timeout=10)
+            self._websocket = await websockets.connect(self.host)
         except Exception as e:
             self.ws_exc = e
             self._logger.exception('Websocket connection failed')

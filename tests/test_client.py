@@ -3,7 +3,8 @@ import asyncio
 
 import pytest
 from pytest_mock import MockerFixture
-import websockets
+from websockets.exceptions import ConnectionClosedError
+from websockets.frames import Close
 
 from green_eggs.client import TwitchChatClient, ensure_str
 from green_eggs.exceptions import ChannelPresenceRaceCondition
@@ -66,7 +67,9 @@ async def test_initial_assumptions(client: TwitchChatClient):
 async def test_buffer_task_captures_closed_connection(client: TwitchChatClient, mocker: MockerFixture):
     mocker.patch('green_eggs.client.TwitchChatClient.connect', return_value=none_future())
     mocker.patch('green_eggs.client.TwitchChatClient.initialize', return_value=none_future())
-    await client._websocket._recv_buffer.put(websockets.ConnectionClosedError(2000, ''))  # type: ignore[union-attr]
+    await client._websocket._recv_buffer.put(  # type: ignore[union-attr]
+        ConnectionClosedError(Close(code=2000, reason=''), None)
+    )
     await client._websocket._recv_buffer.put('something')  # type: ignore[union-attr]
     async for data in client.incoming():
         assert data[0] == 'something'

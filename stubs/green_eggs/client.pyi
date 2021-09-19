@@ -4,6 +4,7 @@ from types import TracebackType
 from typing import AsyncIterator, ClassVar, Dict, List, Optional, Pattern, Tuple, Type, Union
 
 from aiologger import Logger as Logger
+from websockets.legacy.client import WebSocketClientProtocol as WebSocketClientProtocol
 
 from green_eggs.exceptions import ChannelPresenceRaceCondition as ChannelPresenceRaceCondition
 

@@ -63,7 +63,7 @@ classifiers = [
 aiohttp = {extras = ["speedups"], version = "^3.7.4"}
 aiologger = {extras = ["aiofiles"], version = "^0.6.0"}
 python = "^3.7"
-websockets = "^8.1"
+websockets = "^10.0"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
