@@ -3,27 +3,10 @@ set -e
 
 # Establish context first
 if [ "$0" != "-bash" ]; then
-  readonly SCRIPT_NAME="$(basename $0)"
-  readonly REPO_BASE_DIR="$(cd "$(dirname "${SCRIPT_NAME}")" && pwd)"
-  readonly DOCFORMATTER_OPTS="-i -r --wrap-summaries 120 --wrap-descriptions 120 --pre-summary-newline --make-summary-multi-line"
-
-  ci_lint_check_test () {
-    cd "${REPO_BASE_DIR}"
-    poetry check
-    poetry run docformatter --check ${DOCFORMATTER_OPTS} .
-    poetry run isort --check .
-    poetry run black --check .
-    poetry run mypy .
-
-    rm -rf htmlcov/
-    poetry run nox -s tests_pyenv # FIXME Replace with CI session once CI is setup
-  }
-
   local_lint_clean_test () {
-    cd "${REPO_BASE_DIR}"
     poetry check
     poetry run stubgen -p green_eggs -o stubs
-    poetry run docformatter ${DOCFORMATTER_OPTS} .
+    poetry run docformatter -i -r --wrap-summaries 120 --wrap-descriptions 120 --pre-summary-newline --make-summary-multi-line .
     poetry run isort .
     poetry run black .
     poetry run mypy .
