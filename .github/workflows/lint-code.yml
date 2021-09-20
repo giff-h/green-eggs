@@ -1,0 +1,25 @@
+name: "Lint Code"
+on: pull_request_target
+
+jobs:
+  lint_code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: "Install poetry"
+        uses: abatilo/actions-poetry@v2.1.3
+      - name: "Sanity check"
+        run: poetry check
+      - name: "Setup env"
+        run: poetry install
+      - name: "Documentation"
+        run: poetry run docformatter -r --wrap-summaries 120 --wrap-descriptions 120 --pre-summary-newline --make-summary-multi-line --check .
+      - name: "Imports"
+        run: poetry run isort --check .
+      - name: "Formatting"
+        run: poetry run black --check .
+      - name: "Typing"
+        run: poetry run mypy .
