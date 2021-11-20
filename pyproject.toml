@@ -75,7 +75,7 @@ mypy = "^0.910"
 nox-poetry = "^0.8.6"
 pytest = "^6.0.0"
 pytest-asyncio = "^0.15.1"
-pytest-cov = "^2.12.1"
+pytest-cov = "^3.0.0"
 pytest-mock = "^3.6.1"
 
 [build-system]
