@@ -23,7 +23,10 @@ nox.sessions.SessionRunner._orig_friendly_name = nox.sessions.SessionRunner.frie
 nox.sessions.SessionRunner.friendly_name = property(friendly_name)  # type: ignore[assignment]
 
 
-def _get_latest_minor_versions(oldest: int) -> List[str]:
+def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_minor: int = None) -> List[str]:
+    if oldest_minor is not None and latest_minor is not None and oldest_minor > latest_minor:
+        raise ValueError(f"oldest_minor {oldest_minor} may not be greater than latest_minor {latest_minor}")
+
     def shell_output(*args):
         return subprocess.run(list(args), stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').strip()
 
@@ -33,10 +36,13 @@ def _get_latest_minor_versions(oldest: int) -> List[str]:
         versions_output = shell_output('pyenv', 'whence', 'python3')
         sorted_versions = sorted(tuple(map(int, v.split('.'))) for v in versions_output.split('\n'))
         for minor, minor_group in itertools.groupby(sorted_versions, operator.itemgetter(1)):
-            if minor >= oldest:
-                latest_minor = tuple(map(str, list(minor_group)[-1]))
-                path = os.path.join(pyenv_root, 'versions', '.'.join(latest_minor), 'bin', 'python')
-                _friendly_name_mapping[f'tests_pyenv-{path}'] = f'tests_pyenv-python{".".join(latest_minor[:-1])}'
+            include_version = (oldest_minor is None or minor >= oldest_minor) and (
+                latest_minor is None or minor <= latest_minor
+            )
+            if include_version:
+                latest_patch = tuple(map(str, list(minor_group)[-1]))
+                path = os.path.join(pyenv_root, 'versions', '.'.join(latest_patch), 'bin', 'python')
+                _friendly_name_mapping[f'tests_pyenv-{path}'] = f'tests_pyenv-python{".".join(latest_patch[:-1])}'
                 paths.append(path)
     except (subprocess.CalledProcessError, FileNotFoundError):
         # If anything fails, resolve to no paths
@@ -50,7 +56,7 @@ def _run_tests(session: nox_poetry.Session, with_coverage=True):
     session.run('pytest', *test_args, 'tests/')
 
 
-@nox_poetry.session(python=_get_latest_minor_versions(oldest=7))
+@nox_poetry.session(python=_get_latest_patch_of_minor_versions(oldest_minor=7, latest_minor=9))
 def tests_pyenv(session: nox_poetry.Session):
     """
     Runs pytest with coverage on the latest patch of each available pyenv minor python version at least 3.7.
