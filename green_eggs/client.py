@@ -80,8 +80,13 @@ class TwitchChatClient:
                 now = datetime.datetime.utcnow()
                 async for line in self.filter_expected(data):
                     await self._message_buffer.put((line, now))
+            except RuntimeError as e:
+                # This allows the tests to be run on python 3.10 without falling into an endless loop
+                # due to some bizarre scenario where multiple event loops are used inside the test runner (?)
+                assert e.args != ('Event loop is closed',)
+                self._logger.exception('Unhandled exception in listen loop')
             except asyncio.CancelledError:
-                break
+                raise
             except ConnectionClosedError:
                 self._logger.debug('Caught a closed connection. Reconnecting...')
                 await self.connect()

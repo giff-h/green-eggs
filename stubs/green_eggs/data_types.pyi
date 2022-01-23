@@ -12,11 +12,13 @@ class BaseTags(abc.ABC):
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def model_data(self) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw) -> None: ...
 
 class TimestampedBaseTags(BaseTags, abc.ABC):
     tmi_sent_ts: datetime.datetime
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, tmi_sent_ts) -> None: ...
 
 class UserBaseTags(BaseTags, abc.ABC):
     badges: _Badges
@@ -24,34 +26,56 @@ class UserBaseTags(BaseTags, abc.ABC):
     display_name: str
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name) -> None: ...
 
 class UserChatBaseTags(UserBaseTags, abc.ABC):
     badge_info: _Badges
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info) -> None: ...
 
 class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
     emote_sets: List[int]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info, emote_sets) -> None: ...
 
 class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
     mod: bool
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info, mod) -> None: ...
 
 class UserMessageBaseTags(UserBaseTags, abc.ABC):
     emotes: str
     user_id: str
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name, emotes, user_id) -> None: ...
 
 class UserChatMessageBaseTags(TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags, abc.ABC):
     id: str
     room_id: str
+    def __init__(
+        self,
+        deprecated,
+        unhandled,
+        raw,
+        badges,
+        color,
+        display_name,
+        emotes,
+        user_id,
+        badge_info,
+        mod,
+        tmi_sent_ts,
+        id,
+        room_id,
+    ) -> None: ...
 
 class UserSentNoticeBaseTags(BaseTags, abc.ABC):
     login: str
+    def __init__(self, deprecated, unhandled, raw, login) -> None: ...
 
 class ClearChatTags(BaseTags):
     ban_duration: Optional[int]
@@ -61,15 +85,21 @@ class ClearChatTags(BaseTags):
     tmi_sent_ts: Optional[datetime.datetime]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(
+        self, deprecated, unhandled, raw, ban_duration, room_id, target_msg_id, target_user_id, tmi_sent_ts
+    ) -> None: ...
 
 class ClearMsgTags(TimestampedBaseTags, UserSentNoticeBaseTags):
     deprecated_fields: ClassVar[List[str]]
     target_msg_id: str
+    def __init__(self, deprecated, unhandled, raw, login, tmi_sent_ts, target_msg_id) -> None: ...
 
-class GlobalUserStateTags(UserEmoteSetsBaseTags): ...
+class GlobalUserStateTags(UserEmoteSetsBaseTags):
+    def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info, emote_sets) -> None: ...
 
 class NoticeTags(BaseTags):
     msg_id: str
+    def __init__(self, deprecated, unhandled, raw, msg_id) -> None: ...
 
 class PrivMsgTags(UserChatMessageBaseTags):
     bits_re: ClassVar[Pattern[str]]
@@ -89,6 +119,36 @@ class PrivMsgTags(UserChatMessageBaseTags):
     sent_ts: Optional[int]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(
+        self,
+        deprecated,
+        unhandled,
+        raw,
+        badges,
+        color,
+        display_name,
+        emotes,
+        user_id,
+        badge_info,
+        mod,
+        tmi_sent_ts,
+        id,
+        room_id,
+        bits,
+        client_nonce,
+        crowd_chant_parent_msg_id,
+        custom_reward_id,
+        emote_only,
+        first_msg,
+        flags,
+        msg_id,
+        reply_parent_display_name,
+        reply_parent_msg_body,
+        reply_parent_msg_id,
+        reply_parent_user_id,
+        reply_parent_user_login,
+        sent_ts,
+    ) -> None: ...
 
 class RoomStateTags(BaseTags):
     converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]]
@@ -101,6 +161,9 @@ class RoomStateTags(BaseTags):
     subs_only: Optional[bool]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(
+        self, deprecated, unhandled, raw, emote_only, followers_only, r9k, rituals, room_id, slow, subs_only
+    ) -> None: ...
 
 class UserNoticeMessageParams(BaseTags):
     converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]]
@@ -150,6 +213,54 @@ class UserNoticeMessageParams(BaseTags):
     was_gifted: Optional[bool]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(
+        self,
+        deprecated,
+        unhandled,
+        raw,
+        anon_gift,
+        cumulative_months,
+        display_name,
+        domain,
+        fun_string,
+        gift_month_being_redeemed,
+        gift_months,
+        gift_theme,
+        gifter_id,
+        gifter_login,
+        gifter_name,
+        login,
+        mass_gift_count,
+        months,
+        multimonth_duration,
+        multimonth_tenure,
+        origin_id,
+        prior_gifter_anonymous,
+        prior_gifter_display_name,
+        prior_gifter_user_name,
+        profile_image_url,
+        promo_gift_total,
+        promo_name,
+        recipient_display_name,
+        recipient_id,
+        recipient_user_name,
+        ritual_name,
+        selected_count,
+        sender_count,
+        sender_login,
+        sender_name,
+        should_share_streak,
+        streak_months,
+        sub_benefit_end_month,
+        sub_plan,
+        sub_plan_name,
+        threshold,
+        total_reward_count,
+        trigger_amount,
+        trigger_type,
+        viewer_count,
+        was_gifted,
+    ) -> None: ...
 
 class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     flags: str
@@ -158,12 +269,39 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     msg_params: UserNoticeMessageParams
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def __init__(
+        self,
+        deprecated,
+        unhandled,
+        raw,
+        login,
+        badges,
+        color,
+        display_name,
+        emotes,
+        user_id,
+        badge_info,
+        mod,
+        tmi_sent_ts,
+        id,
+        room_id,
+        flags,
+        msg_id,
+        system_msg,
+        msg_params,
+    ) -> None: ...
 
-class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags): ...
+class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags):
+    def __init__(
+        self, deprecated, unhandled, raw, badges, color, display_name, badge_info, mod, emote_sets
+    ) -> None: ...
 
 class WhisperTags(UserMessageBaseTags):
     message_id: str
     thread_id: str
+    def __init__(
+        self, deprecated, unhandled, raw, badges, color, display_name, emotes, user_id, message_id, thread_id
+    ) -> None: ...
 
 class HandleAble(abc.ABC):
     default_timestamp: datetime.datetime
@@ -172,52 +310,65 @@ class HandleAble(abc.ABC):
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
     def as_original_match_dict(self) -> Dict[str, Any]: ...
     def model_data(self) -> Dict[str, Any]: ...
+    def __init__(self, default_timestamp, raw) -> None: ...
 
 class FromUser(HandleAble, abc.ABC):
     who: str
+    def __init__(self, default_timestamp, raw, who) -> None: ...
 
 class HasMessage(HandleAble, abc.ABC):
     message: str
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    def __init__(self, default_timestamp, raw, message) -> None: ...
 
 class HasTags(HandleAble, abc.ABC):
     tags: BaseTags
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    def __init__(self, default_timestamp, raw, tags) -> None: ...
 
 class InChannel(HandleAble, abc.ABC):
     where: str
+    def __init__(self, default_timestamp, raw, where) -> None: ...
 
-class UserInChannel(FromUser, InChannel, abc.ABC): ...
+class UserInChannel(FromUser, InChannel, abc.ABC):
+    def __init__(self, default_timestamp, raw, where, who) -> None: ...
 
 class Code353(UserInChannel):
     users: List[str]
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
     def as_original_match_dict(self) -> Dict[str, Any]: ...
+    def __init__(self, default_timestamp, raw, where, who, users) -> None: ...
 
-class Code366(UserInChannel): ...
+class Code366(UserInChannel):
+    def __init__(self, default_timestamp, raw, where, who) -> None: ...
 
 class ClearChat(HasTags, UserInChannel):
     tags: ClearChatTags
+    def __init__(self, default_timestamp, raw, where, who, tags) -> None: ...
 
 class ClearMsg(HasMessage, HasTags, InChannel):
     tags: ClearMsgTags
+    def __init__(self, default_timestamp, raw, where, tags, message) -> None: ...
 
 class HostTarget(InChannel):
     number_of_viewers: Optional[int]
     target: Optional[str]
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    def __init__(self, default_timestamp, raw, where, number_of_viewers, target) -> None: ...
 
 class JoinPart(UserInChannel):
     action: str
     @property
     def is_join(self) -> bool: ...
+    def __init__(self, default_timestamp, raw, where, who, action) -> None: ...
 
 class Notice(HasMessage, HasTags, InChannel):
     tags: NoticeTags
+    def __init__(self, default_timestamp, raw, where, tags, message) -> None: ...
 
 class PrivMsg(HasMessage, HasTags, UserInChannel):
     tags: PrivMsgTags
@@ -226,20 +377,25 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
     def is_sender_subscribed(self) -> bool: ...
     @property
     def words(self) -> List[str]: ...
+    def __init__(self, default_timestamp, raw, where, who, tags, message) -> None: ...
 
 class RoomState(HasTags, InChannel):
     tags: RoomStateTags
+    def __init__(self, default_timestamp, raw, where, tags) -> None: ...
 
 class UserNotice(HasTags, InChannel):
     tags: UserNoticeTags
     message: Optional[str]
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    def __init__(self, default_timestamp, raw, where, tags, message) -> None: ...
 
 class UserState(HasTags, InChannel):
     tags: UserStateTags
+    def __init__(self, default_timestamp, raw, where, tags) -> None: ...
 
 class Whisper(HasMessage, HasTags, UserInChannel):
     tags: WhisperTags
+    def __init__(self, default_timestamp, raw, where, who, tags, message) -> None: ...
 
 patterns: Dict[Type[HandleAble], Pattern[str]]

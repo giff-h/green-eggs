@@ -25,7 +25,7 @@ nox.sessions.SessionRunner.friendly_name = property(friendly_name)  # type: igno
 
 def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_minor: int = None) -> List[str]:
     if oldest_minor is not None and latest_minor is not None and oldest_minor > latest_minor:
-        raise ValueError(f"oldest_minor {oldest_minor} may not be greater than latest_minor {latest_minor}")
+        raise ValueError(f'oldest_minor {oldest_minor} may not be greater than latest_minor {latest_minor}')
 
     def shell_output(*args):
         return subprocess.run(list(args), stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').strip()
@@ -56,7 +56,7 @@ def _run_tests(session: nox_poetry.Session, with_coverage=True):
     session.run('pytest', *test_args, 'tests/')
 
 
-@nox_poetry.session(python=_get_latest_patch_of_minor_versions(oldest_minor=7, latest_minor=9))
+@nox_poetry.session(python=_get_latest_patch_of_minor_versions(oldest_minor=7, latest_minor=10))
 def tests_pyenv(session: nox_poetry.Session):
     """
     Runs pytest with coverage on the latest patch of each available pyenv minor python version at least 3.7.

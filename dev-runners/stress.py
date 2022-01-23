@@ -35,10 +35,7 @@ def record_unhandled(data_type: Union[HandleAble, BaseTags]):
 @contextlib.asynccontextmanager
 async def client(logger: aiologger.Logger):
     async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
-        try:
-            yield chat
-        except asyncio.CancelledError:
-            pass
+        yield chat
 
 
 async def stress():
