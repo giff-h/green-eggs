@@ -47,7 +47,9 @@ class TwitchApi:
         :return:
         """
         url = self._base_url + path
-        if params is not _empty and len(params):
+        if params is not _empty and params:
+            if isinstance(params, Mapping):
+                params = {k: str(v).lower() if isinstance(v, bool) else v for k, v in params.items()}
             url += f'?{urlencode(params, doseq=True)}'
 
         self._logger.debug(f'Making {method} request to {url}')
@@ -379,7 +381,7 @@ class TwitchApi:
         return await self._request('GET', 'bits/cheermotes', params=params)
 
     async def get_extension_transactions(
-        self, *, extension_id: str, id_: Union[str, List[str]] = _empty, after: str = _empty, first: int = _empty
+        self, *, after: str = _empty, extension_id: str, first: int = _empty, id_: Union[str, List[str]] = _empty
     ):
         """
         Gets the list of Extension transactions for a given Extension. This allows Extension back-end servers to fetch a
@@ -465,7 +467,7 @@ class TwitchApi:
         | `pagination`                 | object containing a string | If provided, is the key used to fetch the next page of data. If not provided, the current response is the last page of data available. |
         +------------------------------+----------------------------+----------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(extension_id=extension_id, id=id_, after=after, first=first)
+        params = exclude_non_empty(after=after, extension_id=extension_id, first=first, id=id_)
         return await self._request('GET', 'extensions/transactions', params=params)
 
     async def get_channel_information(self, *, broadcaster_id: str):
@@ -479,11 +481,11 @@ class TwitchApi:
         `GET https://api.twitch.tv/helix/channels`
 
         # Required Query Parameters:
-        +------------------+--------+---------------------------------+
-        | Parameter        | Type   | Description                     |
-        +------------------+--------+---------------------------------+
-        | `broadcaster_id` | string | ID of the channel to be updated |
-        +------------------+--------+---------------------------------+
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter        | Type   | Description                                                                                                                                                                                                                                      |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `broadcaster_id` | string | The ID of the broadcaster whose channel you want to get. To specify more than one ID, include this parameter for each broadcaster you want to get. For example, `broadcaster_id=1234&broadcaster_id=5678`. You may specify a maximum of 100 IDs. |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
         # Optional Query Parameters:
         None
@@ -492,19 +494,21 @@ class TwitchApi:
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
         | Parameter              | Type    | Description                                                                                                                   |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_id`       | string  | Twitch User ID of this channel owner                                                                                          |
+        | `broadcaster_id`       | string  | Twitch User ID of this channel owner.                                                                                         |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_name`     | string  | Twitch user display name of this channel owner                                                                                |
+        | `broadcaster_login`    | string  | Broadcaster’s user login name.                                                                                                |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `game_name`            | string  | Name of the game being played on the channel                                                                                  |
+        | `broadcaster_name`     | string  | Twitch user display name of this channel owner.                                                                               |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `game_id`              | string  | Current game ID being played on the channel                                                                                   |
+        | `game_name`            | string  | Name of the game being played on the channel.                                                                                 |
+        +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | `game_id`              | string  | Current game ID being played on the channel.                                                                                  |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
         | `broadcaster_language` | string  | Language of the channel. A language value is either the ISO 639-1 two-letter code for a supported stream language or “other”. |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `title`                | string  | Title of the stream                                                                                                           |
+        | `title`                | string  | Title of the stream.                                                                                                          |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
-        | `delay`                | integer | Stream delay in seconds                                                                                                       |
+        | `delay`                | integer | Stream delay in seconds.                                                                                                      |
         +------------------------+---------+-------------------------------------------------------------------------------------------------------------------------------+
 
         # Response Codes:
@@ -525,10 +529,10 @@ class TwitchApi:
         self,
         *,
         broadcaster_id: str,
-        game_id: str = _empty,
         broadcaster_language: str = _empty,
-        title: str = _empty,
         delay: int = _empty,
+        game_id: str = _empty,
+        title: str = _empty,
     ):
         """
         Modifies channel information for users.
@@ -578,7 +582,7 @@ class TwitchApi:
         +-----------+-------------------------------------------------+
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
-        data = exclude_non_empty(game_id=game_id, broadcaster_language=broadcaster_language, title=title, delay=delay)
+        data = exclude_non_empty(broadcaster_language=broadcaster_language, delay=delay, game_id=game_id, title=title)
         return await self._request('PATCH', 'channels', params=params, data=data)
 
     async def get_channel_editors(self, *, broadcaster_id: str):
@@ -632,19 +636,19 @@ class TwitchApi:
         self,
         *,
         broadcaster_id: str,
-        title: str,
-        cost: int,
-        prompt: str = _empty,
-        is_enabled: bool = _empty,
         background_color: str = _empty,
-        is_user_input_required: bool = _empty,
-        is_max_per_stream_enabled: bool = _empty,
-        max_per_stream: int = _empty,
-        is_max_per_user_per_stream_enabled: bool = _empty,
-        max_per_user_per_stream: int = _empty,
-        is_global_cooldown_enabled: bool = _empty,
+        cost: int,
         global_cooldown_seconds: int = _empty,
+        is_enabled: bool = _empty,
+        is_global_cooldown_enabled: bool = _empty,
+        is_max_per_stream_enabled: bool = _empty,
+        is_max_per_user_per_stream_enabled: bool = _empty,
+        is_user_input_required: bool = _empty,
+        max_per_stream: int = _empty,
+        max_per_user_per_stream: int = _empty,
+        prompt: str = _empty,
         should_redemptions_skip_request_queue: bool = _empty,
+        title: str,
     ):
         """
         Creates a Custom Reward on a channel.
@@ -765,19 +769,19 @@ class TwitchApi:
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
         data = exclude_non_empty(
-            title=title,
-            cost=cost,
-            prompt=prompt,
-            is_enabled=is_enabled,
             background_color=background_color,
-            is_user_input_required=is_user_input_required,
-            is_max_per_stream_enabled=is_max_per_stream_enabled,
-            max_per_stream=max_per_stream,
-            is_max_per_user_per_stream_enabled=is_max_per_user_per_stream_enabled,
-            max_per_user_per_stream=max_per_user_per_stream,
-            is_global_cooldown_enabled=is_global_cooldown_enabled,
+            cost=cost,
             global_cooldown_seconds=global_cooldown_seconds,
+            is_enabled=is_enabled,
+            is_global_cooldown_enabled=is_global_cooldown_enabled,
+            is_max_per_stream_enabled=is_max_per_stream_enabled,
+            is_max_per_user_per_stream_enabled=is_max_per_user_per_stream_enabled,
+            is_user_input_required=is_user_input_required,
+            max_per_stream=max_per_stream,
+            max_per_user_per_stream=max_per_user_per_stream,
+            prompt=prompt,
             should_redemptions_skip_request_queue=should_redemptions_skip_request_queue,
+            title=title,
         )
         return await self._request('POST', 'channel_points/custom_rewards', params=params, data=data)
 
@@ -932,13 +936,13 @@ class TwitchApi:
     async def get_custom_reward_redemption(
         self,
         *,
-        broadcaster_id: str,
-        reward_id: str,
-        id_: Union[str, List[str]] = _empty,
-        status: str = _empty,
-        sort: str = _empty,
         after: str = _empty,
+        broadcaster_id: str,
         first: int = _empty,
+        id_: Union[str, List[str]] = _empty,
+        reward_id: str,
+        sort: str = _empty,
+        status: str = _empty,
     ):
         """
         Returns Custom Reward Redemption objects for a Custom Reward on a channel that was created by the same
@@ -1026,13 +1030,13 @@ class TwitchApi:
         +-----------+-----------------------------------------------------------------------------------------------------------------------------+
         """
         params = exclude_non_empty(
-            broadcaster_id=broadcaster_id,
-            reward_id=reward_id,
-            id=id_,
-            status=status,
-            sort=sort,
             after=after,
+            broadcaster_id=broadcaster_id,
             first=first,
+            id=id_,
+            reward_id=reward_id,
+            sort=sort,
+            status=status,
         )
         return await self._request('GET', 'channel_points/custom_rewards/redemptions', params=params)
 
@@ -1041,20 +1045,20 @@ class TwitchApi:
         *,
         broadcaster_id: str,
         id_: str,
-        title: str = _empty,
-        prompt: str = _empty,
-        cost: int = _empty,
         background_color: str = _empty,
-        is_enabled: bool = _empty,
-        is_user_input_required: bool = _empty,
-        is_max_per_stream_enabled: bool = _empty,
-        max_per_stream: int = _empty,
-        is_max_per_user_per_stream_enabled: bool = _empty,
-        max_per_user_per_stream: int = _empty,
-        is_global_cooldown_enabled: bool = _empty,
+        cost: int = _empty,
         global_cooldown_seconds: int = _empty,
+        is_enabled: bool = _empty,
+        is_global_cooldown_enabled: bool = _empty,
+        is_max_per_stream_enabled: bool = _empty,
+        is_max_per_user_per_stream_enabled: bool = _empty,
         is_paused: bool = _empty,
+        is_user_input_required: bool = _empty,
+        max_per_stream: int = _empty,
+        max_per_user_per_stream: int = _empty,
+        prompt: str = _empty,
         should_redemptions_skip_request_queue: bool = _empty,
+        title: str = _empty,
     ):
         """
         Updates a Custom Reward created on a channel.
@@ -1178,25 +1182,25 @@ class TwitchApi:
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_)
         data = exclude_non_empty(
-            title=title,
-            prompt=prompt,
-            cost=cost,
             background_color=background_color,
-            is_enabled=is_enabled,
-            is_user_input_required=is_user_input_required,
-            is_max_per_stream_enabled=is_max_per_stream_enabled,
-            max_per_stream=max_per_stream,
-            is_max_per_user_per_stream_enabled=is_max_per_user_per_stream_enabled,
-            max_per_user_per_stream=max_per_user_per_stream,
-            is_global_cooldown_enabled=is_global_cooldown_enabled,
+            cost=cost,
             global_cooldown_seconds=global_cooldown_seconds,
+            is_enabled=is_enabled,
+            is_global_cooldown_enabled=is_global_cooldown_enabled,
+            is_max_per_stream_enabled=is_max_per_stream_enabled,
+            is_max_per_user_per_stream_enabled=is_max_per_user_per_stream_enabled,
             is_paused=is_paused,
+            is_user_input_required=is_user_input_required,
+            max_per_stream=max_per_stream,
+            max_per_user_per_stream=max_per_user_per_stream,
+            prompt=prompt,
             should_redemptions_skip_request_queue=should_redemptions_skip_request_queue,
+            title=title,
         )
         return await self._request('PATCH', 'channel_points/custom_rewards', params=params, data=data)
 
     async def update_redemption_status(
-        self, *, id_: Union[str, List[str]], broadcaster_id: str, reward_id: str, status: str
+        self, *, broadcaster_id: str, id_: Union[str, List[str]], reward_id: str, status: str
     ):
         """
         Updates the status of Custom Reward Redemption objects on a channel that are in the UNFULFILLED status.
@@ -1276,15 +1280,15 @@ class TwitchApi:
         | 500       | Internal Server Error: Something bad happened on our side                                                                   |
         +-----------+-----------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(id=id_, broadcaster_id=broadcaster_id, reward_id=reward_id)
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_, reward_id=reward_id)
         data = exclude_non_empty(status=status)
         return await self._request('PATCH', 'channel_points/custom_rewards/redemptions', params=params, data=data)
 
     async def get_channel_emotes(self, *, broadcaster_id: str):
         """
-        NEW Gets all emotes that the specified Twitch channel created. Broadcasters create these custom emotes for users
-        who subscribe to or follow the channel, or cheer Bits in the channel’s chat window. For information about the
-        custom emotes, see subscriber emotes, Bits tier emotes, and follower emotes.
+        Gets all emotes that the specified Twitch channel created. Broadcasters create these custom emotes for users who
+        subscribe to or follow the channel, or cheer Bits in the channel’s chat window. For information about the custom
+        emotes, see subscriber emotes, Bits tier emotes, and follower emotes.
 
         NOTE: With the exception of custom follower emotes, users may use custom emotes in any Twitch chat.
 
@@ -1307,7 +1311,7 @@ class TwitchApi:
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | Parameter      | Type         | Description                                                                                                                                                                                                                                                                                                                                       |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `data`         | object array | An array of channel-created emotes.                                                                                                                                                                                                                                                                                                               |
+        | `data`         | object array | A list of emotes that the specified channel created.                                                                                                                                                                                                                                                                                              |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `id`           | string       | An ID that identifies the emote.                                                                                                                                                                                                                                                                                                                  |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1332,7 +1336,6 @@ class TwitchApi:
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `format`       | string array | The formats that the emote is available in. For example, if the emote is available only as a static PNG, the array contains only `static`. But if it’s available as a static PNG and an animated GIF, the array contains `static` and `animated`. The possible formats are:                                                                       |
         |                |              | - animated — Indicates an animated GIF is available for this emote.                                                                                                                                                                                                                                                                               |
-        |                |              | - default — Returns an animated GIF if available, otherwise, returns the static PNG.                                                                                                                                                                                                                                                              |
         |                |              | - static — Indicates a static PNG file is available for this emote.                                                                                                                                                                                                                                                                               |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `scale`        | string array | The sizes that the emote is available in. For example, if the emote is available in small and medium sizes, the array contains 1.0 and 2.0. Possible sizes are:                                                                                                                                                                                   |
@@ -1363,7 +1366,7 @@ class TwitchApi:
 
     async def get_global_emotes(self):
         """
-        NEW Gets all global emotes. Global emotes are Twitch-created emoticons that users can use in any Twitch chat.
+        Gets all global emotes. Global emotes are Twitch-created emoticons that users can use in any Twitch chat.
 
         Learn More
 
@@ -1377,7 +1380,7 @@ class TwitchApi:
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | Parameter    | Type         | Description                                                                                                                                                                                                                                                                                                                                       |
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `data`       | object array | An array of global emotes.                                                                                                                                                                                                                                                                                                                        |
+        | `data`       | object array | The list of global emotes.                                                                                                                                                                                                                                                                                                                        |
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `id`         | string       | An ID that identifies the emote.                                                                                                                                                                                                                                                                                                                  |
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1393,7 +1396,6 @@ class TwitchApi:
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `format`     | string array | The formats that the emote is available in. For example, if the emote is available only as a static PNG, the array contains only `static`. But if it’s available as a static PNG and an animated GIF, the array contains `static` and `animated`. The possible formats are:                                                                       |
         |              |              | - animated — Indicates an animated GIF is available for this emote.                                                                                                                                                                                                                                                                               |
-        |              |              | - default — Returns an animated GIF if available, otherwise, returns the static PNG.                                                                                                                                                                                                                                                              |
         |              |              | - static — Indicates a static PNG file is available for this emote.                                                                                                                                                                                                                                                                               |
         +--------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `scale`      | string array | The sizes that the emote is available in. For example, if the emote is available in small and medium sizes, the array contains 1.0 and 2.0. Possible sizes are:                                                                                                                                                                                   |
@@ -1423,7 +1425,7 @@ class TwitchApi:
 
     async def get_emote_sets(self, *, emote_set_id: str):
         """
-        NEW Gets emotes for one or more specified emote sets.
+        Gets emotes for one or more specified emote sets.
 
         An emote set groups emotes that have a similar context. For example, Twitch places all the subscriber emotes that a broadcaster uploads for their channel in the same emote set.
 
@@ -1446,7 +1448,7 @@ class TwitchApi:
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | Parameter      | Type         | Description                                                                                                                                                                                                                                                                                                                                       |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `data`         | object array | An array of global emotes.                                                                                                                                                                                                                                                                                                                        |
+        | `data`         | object array | The list of emotes found in the specified emote sets.                                                                                                                                                                                                                                                                                             |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `id`           | string       | An ID that identifies the emote.                                                                                                                                                                                                                                                                                                                  |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -1471,7 +1473,6 @@ class TwitchApi:
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `format`       | string array | The formats that the emote is available in. For example, if the emote is available only as a static PNG, the array contains only `static`. But if it’s available as a static PNG and an animated GIF, the array contains `static` and `animated`. The possible formats are:                                                                       |
         |                |              | - animated — Indicates an animated GIF is available for this emote.                                                                                                                                                                                                                                                                               |
-        |                |              | - default — Returns an animated GIF if available, otherwise, returns the static PNG.                                                                                                                                                                                                                                                              |
         |                |              | - static — Indicates a static PNG file is available for this emote.                                                                                                                                                                                                                                                                               |
         +----------------+--------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `scale`        | string array | The sizes that the emote is available in. For example, if the emote is available in small and medium sizes, the array contains 1.0 and 2.0. Possible sizes are:                                                                                                                                                                                   |
@@ -1502,8 +1503,8 @@ class TwitchApi:
 
     async def get_channel_chat_badges(self, *, broadcaster_id: str):
         """
-        NEW Gets a list of custom chat badges that can be used in chat for the specified channel. This includes
-        subscriber badges and Bit badges.
+        Gets a list of custom chat badges that can be used in chat for the specified channel. This includes subscriber
+        badges and Bit badges.
 
         # Authorization:
         - User OAuth Token or App Access Token
@@ -1558,7 +1559,7 @@ class TwitchApi:
 
     async def get_global_chat_badges(self):
         """
-        NEW Gets a list of chat badges that can be used in chat for any channel.
+        Gets a list of chat badges that can be used in chat for any channel.
 
         # Authorization:
         - User OAuth Token or App Access Token
@@ -1600,6 +1601,252 @@ class TwitchApi:
         +------+-------------------------------------------+
         """
         return await self._request('GET', 'chat/badges/global')
+
+    async def get_chat_settings(self, *, broadcaster_id: str, moderator_id: str = _empty):
+        """
+        NEW Gets the broadcaster’s chat settings.
+
+        For an overview of chat settings, see Chat Commands for Broadcasters and Moderators and Moderator Preferences.
+
+        # Authorization:
+        Requires an App access token. However, to include the `non_moderator_chat_delay` or `non_moderator_chat_delay_duration` settings in the response, you must specify a User access token with scope set to `moderator:read:chat_settings`.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/chat/settings`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose chat settings you want to get.                                                                                     |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | No       | String | Required only to access the `non_moderator_chat_delay` or `non_moderator_chat_delay_duration` settings.                                            |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to get their own settings (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.       |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Field                             | Type         | Description                                                                                                                                                                                                              |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | data                              | object array | The list of chat settings. The list contains a single object with all the settings.                                                                                                                                      |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id                    | String       | The ID of the broadcaster specified in the request.                                                                                                                                                                      |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | emote_mode                        | Boolean      | A Boolean value that determines whether chat messages must contain only emotes. Is true, if only messages that are 100% emotes are allowed; otherwise, false.                                                            |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode                     | Boolean      | A Boolean value that determines whether the broadcaster restricts the chat room to followers only, based on how long they’ve followed.                                                                                   |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster restricts the chat room to followers only; otherwise, false.                                                                                                                                 |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `follower_mode_duration` for how long the followers must have followed the broadcaster to participate in the chat room.                                                                                              |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode_duration            | Integer      | The length of time, in minutes, that the followers must have followed the broadcaster to participate in the chat room. See `follower_mode`.                                                                              |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if `follower_mode` is false.                                                                                                                                                                                     |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id                      | String       | The moderator’s ID. The response includes this field only if the request specifies a User access token that includes the  moderator:read:chat_settings scope.                                                            |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay          | Boolean      | A Boolean value that determines whether the broadcaster adds a short delay before chat messages appear in the chat room. This gives chat moderators and bots a chance to remove them before viewers can see the message. |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster applies a delay; otherwise, false.                                                                                                                                                           |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `non_moderator_chat_delay_duration` for the length of the delay.                                                                                                                                                     |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | The response includes this field only if the request specifies a User access token that includes the  moderator:read:chat_settings scope.                                                                                |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay_duration | Integer      | The amount of time, in seconds, that messages are delayed from appearing in chat. See `non_moderator_chat_delay`.                                                                                                        |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if non_moderator_chat_delay is false.                                                                                                                                                                            |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | The response includes this field only if the request specifies a User access token that includes the  moderator:read:chat_settings scope.                                                                                |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode                         | Boolean      | A Boolean value that determines whether the broadcaster limits how often users in the chat room are allowed to send messages.                                                                                            |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster applies a delay; otherwise, false.                                                                                                                                                           |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `slow_mode_wait_time` for the delay.                                                                                                                                                                                 |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode_wait_time               | Integer      | The amount of time, in seconds, that users need to wait between sending messages. See `slow_mode`.                                                                                                                       |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if slow_mode is false.                                                                                                                                                                                           |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | subscriber_mode                   | Boolean      | A Boolean value that determines whether only users that subscribe to the broadcaster’s channel can talk in the chat room.                                                                                                |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster restricts the chat room to subscribers only; otherwise, false.                                                                                                                               |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | unique_chat_mode                  | Boolean      | A Boolean value that determines whether the broadcaster requires users to post only unique messages in the chat room.                                                                                                    |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster requires unique messages only; otherwise, false.                                                                                                                                             |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-------------------------+
+        | Code | Meaning                 |
+        +------+-------------------------+
+        | 200  | Success.                |
+        +------+-------------------------+
+        | 400  | Malformed request.      |
+        +------+-------------------------+
+        | 401  | Authentication failure. |
+        +------+-------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        return await self._request('GET', 'chat/settings', params=params)
+
+    async def update_chat_settings(
+        self,
+        *,
+        broadcaster_id: str,
+        moderator_id: str,
+        emote_mode: bool = _empty,
+        follower_mode: bool = _empty,
+        follower_mode_duration: int = _empty,
+        non_moderator_chat_delay: bool = _empty,
+        non_moderator_chat_delay_duration: int = _empty,
+        slow_mode: bool = _empty,
+        slow_mode_wait_time: int = _empty,
+        subscriber_mode: bool = _empty,
+        unique_chat_mode: bool = _empty,
+    ):
+        """
+        NEW Updates the broadcaster’s chat settings.
+
+        # Authentication:
+        Requires a User access token with scope set to `moderator:manage:chat_settings`.
+
+        # URL:
+        `PATCH https://api.twitch.tv/helix/chat/settings`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose chat settings you want to update. This ID must match the user ID associated with the user OAuth token.             |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to update their own settings (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.    |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Request Body:
+        Specify only those fields that you want to update.
+
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Field                             | Type    | Description                                                                                                                                                                                                              |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | emote_mode                        | Boolean | A Boolean value that determines whether chat messages must contain only emotes.                                                                                                                                          |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if only messages that are 100% emotes are allowed; otherwise, false. Default is false.                                                                                                                      |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode                     | Boolean | A Boolean value that determines whether the broadcaster restricts the chat room to followers only, based on how long they’ve followed.                                                                                   |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if the broadcaster restricts the chat room to followers only; otherwise, false. Default is true.                                                                                                            |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | See `follower_mode_duration` for how long the followers must have followed the broadcaster to participate in the chat room.                                                                                              |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode_duration            | Integer | The length of time, in minutes, that the followers must have followed the broadcaster to participate in the chat room (see `follower_mode`).                                                                             |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | You may specify a value in the range: 0 (no restriction) through 129600 (3 months). The default is 0.                                                                                                                    |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay          | Boolean | A Boolean value that determines whether the broadcaster adds a short delay before chat messages appear in the chat room. This gives chat moderators and bots a chance to remove them before viewers can see the message. |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if the broadcaster applies a delay; otherwise, false. Default is false.                                                                                                                                     |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | See `non_moderator_chat_delay_duration` for the length of the delay.                                                                                                                                                     |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay_duration | Integer | The amount of time, in seconds, that messages are delayed from appearing in chat.                                                                                                                                        |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Possible values are:                                                                                                                                                                                                     |
+        |                                   |         | - 2  —  2 second delay (recommended)                                                                                                                                                                                     |
+        |                                   |         | - 4  —  4 second delay                                                                                                                                                                                                   |
+        |                                   |         | - 6  —  6 second delaySee `non_moderator_chat_delay`.                                                                                                                                                                    |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode                         | Boolean | A Boolean value that determines whether the broadcaster limits how often users in the chat room are allowed to send messages.                                                                                            |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if the broadcaster applies a wait period messages; otherwise, false. Default is false.                                                                                                                      |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | See `slow_mode_wait_time` for the delay.                                                                                                                                                                                 |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode_wait_time               | Integer | The amount of time, in seconds, that users need to wait between sending messages (see `slow_mode`).                                                                                                                      |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | You may specify a value in the range: 3 (3 second delay) through 120 (2 minute delay). The default is 30 seconds.                                                                                                        |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | subscriber_mode                   | Boolean | A Boolean value that determines whether only users that subscribe to the broadcaster’s channel can talk in the chat room.                                                                                                |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if the broadcaster restricts the chat room to subscribers only; otherwise, false. Default is false.                                                                                                         |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | unique_chat_mode                  | Boolean | A Boolean value that determines whether the broadcaster requires users to post only unique messages in the chat room.                                                                                                    |
+        |                                   |         |                                                                                                                                                                                                                          |
+        |                                   |         | Set to true, if the broadcaster requires unique messages only; otherwise, false. Default is false.                                                                                                                       |
+        +-----------------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Field                             | Type         | Description                                                                                                                                                                                                              |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | data                              | object array | The list of chat settings. The list will contain the single object with all the settings.                                                                                                                                |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id                    | String       | The ID of the broadcaster specified in the request.                                                                                                                                                                      |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | emote_mode                        | Boolean      | A Boolean value that determines whether chat messages must contain only emotes. Is true, if only messages that are 100% emotes are allowed; otherwise, false.                                                            |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode                     | Boolean      | A Boolean value that determines whether the broadcaster restricts the chat room to followers only, based on how long they’ve followed.                                                                                   |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster restricts the chat room to followers only; otherwise, false.                                                                                                                                 |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `follower_mode_duration` for how long the followers must have followed the broadcaster to participate in the chat room.                                                                                              |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | follower_mode_duration            | Integer      | The length of time, in minutes, that the followers must have followed the broadcaster to participate in the chat room. See `follower_mode`.                                                                              |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if `follower_mode` is false.                                                                                                                                                                                     |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id                      | String       | The ID of the moderator specified in the request.                                                                                                                                                                        |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay          | Boolean      | A Boolean value that determines whether the broadcaster adds a short delay before chat messages appear in the chat room. This gives chat moderators and bots a chance to remove them before viewers can see the message. |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster applies a delay; otherwise, false.                                                                                                                                                           |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `non_moderator_chat_delay_duration` for the length of the delay.                                                                                                                                                     |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | non_moderator_chat_delay_duration | Integer      | The amount of time, in seconds, that messages are delayed from appearing in chat. See `non_moderator_chat_delay`.                                                                                                        |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if non_moderator_chat_delay is false.                                                                                                                                                                            |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode                         | Boolean      | A Boolean value that determines whether the broadcaster limits how often users in the chat room are allowed to send messages.                                                                                            |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster applies a delay; otherwise, false.                                                                                                                                                           |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | See `slow_mode_wait_time` for the delay.                                                                                                                                                                                 |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | slow_mode_wait_time               | Integer      | The amount of time, in seconds, that users need to wait between sending messages. See `slow_mode`.                                                                                                                       |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is null if slow_mode is false.                                                                                                                                                                                           |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | subscriber_mode                   | Boolean      | A Boolean value that determines whether only users that subscribe to the broadcaster’s channel can talk in the chat room.                                                                                                |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster restricts the chat room to subscribers only; otherwise, false.                                                                                                                               |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | unique_chat_mode                  | Boolean      | A Boolean value that determines whether the broadcaster requires users to post only unique messages in the chat room.                                                                                                    |
+        |                                   |              |                                                                                                                                                                                                                          |
+        |                                   |              | Is true, if the broadcaster requires unique messages only; otherwise, false.                                                                                                                                             |
+        +-----------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        data = exclude_non_empty(
+            emote_mode=emote_mode,
+            follower_mode=follower_mode,
+            follower_mode_duration=follower_mode_duration,
+            non_moderator_chat_delay=non_moderator_chat_delay,
+            non_moderator_chat_delay_duration=non_moderator_chat_delay_duration,
+            slow_mode=slow_mode,
+            slow_mode_wait_time=slow_mode_wait_time,
+            subscriber_mode=subscriber_mode,
+            unique_chat_mode=unique_chat_mode,
+        )
+        return await self._request('PATCH', 'chat/settings', params=params, data=data)
 
     async def create_clip(self, *, broadcaster_id: str, has_delay: bool = _empty):
         """
@@ -1652,13 +1899,13 @@ class TwitchApi:
     async def get_clips(
         self,
         *,
-        broadcaster_id: str,
-        game_id: str,
-        id_: Union[str, List[str]],
         after: str = _empty,
         before: str = _empty,
+        broadcaster_id: str,
         ended_at: str = _empty,
         first: int = _empty,
+        game_id: str,
+        id_: Union[str, List[str]],
         started_at: str = _empty,
     ):
         """
@@ -1740,13 +1987,13 @@ class TwitchApi:
         +--------------------+----------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
         params = exclude_non_empty(
-            broadcaster_id=broadcaster_id,
-            game_id=game_id,
-            id=id_,
             after=after,
             before=before,
+            broadcaster_id=broadcaster_id,
             ended_at=ended_at,
             first=first,
+            game_id=game_id,
+            id=id_,
             started_at=started_at,
         )
         return await self._request('GET', 'clips', params=params)
@@ -1821,12 +2068,12 @@ class TwitchApi:
     async def get_drops_entitlements(
         self,
         *,
-        id_: str = _empty,
-        user_id: str = _empty,
-        game_id: str = _empty,
-        fulfillment_status: str = _empty,
         after: str = _empty,
         first: int = _empty,
+        fulfillment_status: str = _empty,
+        game_id: str = _empty,
+        id_: str = _empty,
+        user_id: str = _empty,
     ):
         """
         Gets a list of entitlements for a given organization that have been granted to a game, user, or both.
@@ -1925,7 +2172,7 @@ class TwitchApi:
         +------+---------------------------------------------------------------+
         """
         params = exclude_non_empty(
-            id=id_, user_id=user_id, game_id=game_id, fulfillment_status=fulfillment_status, after=after, first=first
+            after=after, first=first, fulfillment_status=fulfillment_status, game_id=game_id, id=id_, user_id=user_id
         )
         return await self._request('GET', 'entitlements/drops', params=params)
 
@@ -2004,71 +2251,45 @@ class TwitchApi:
 
     async def redeem_code(self, *, code: str = _empty, user_id: int = _empty):
         """
-        Redeems one or more provided codes to the authenticated Twitch user. This API requires that the caller is an
-        authenticated Twitch user. This API requires that the caller is an authenticated Twitch user. The API is
-        throttled to one request per second per authenticated user. Codes are redeemable alphanumeric strings tied only
-        to the bits product. This third-party API allows other parties to redeem codes on behalf of users. Third-party
-        app and extension developers can use the API to provide rewards of bits from within their games. We provide sets
-        of codes to the third party as part of a contract agreement. The third-party program then calls this API to
-        credit the Twitch user by submitting any specific codes. This means that a bits reward can be applied without
-        the user having to follow any manual steps.
+        Redeems one or more redemption codes. Redeeming a code credits the user’s account with the entitlement
+        associated with the code. For example, a Bits reward earned when playing a game.
 
-        All codes are single-use. Once a code has been redeemed, via either this API or the site page, the code is no longer valid for any further use.
+        Rate limit: You may send at most one request per second per user.
 
         # URL:
         `POST https://api.twitch.tv/helix/entitlements/codes`
 
         # Authentication:
-        Access is controlled via an app access token on the calling service. The client ID associated with the app access token must be approved by Twitch.
-
-        # Authorization:
-        Callers with an app access token are authorized to redeem codes on behalf of any Twitch user account.
+        Requires an App access token. Only client IDs approved by Twitch may redeem codes on behalf of any Twitch user account.
 
         # Query Parameters:
-        +-----------+---------+---------------------------------------------------------------------------------------------------+
-        | Parameter | Type    | Description                                                                                       |
-        +-----------+---------+---------------------------------------------------------------------------------------------------+
-        | `code`    | String  | The code to redeem to the authenticated user’s account.                                           |
-        |           |         |                                                                                                   |
-        |           |         | A fifteen character (plus optional hyphen separators) alphanumeric string, e.g. ABCDE-12345-FGHIJ |
-        |           |         |                                                                                                   |
-        |           |         | Repeat this query parameter additional times to redeem multiple codes.                            |
-        |           |         | Ex: `?code=code1&code=code2`                                                                      |
-        |           |         | 1-20 code parameters are allowed.                                                                 |
-        +-----------+---------+---------------------------------------------------------------------------------------------------+
-        | `user_id` | Integer | Represents a numeric Twitch user ID.                                                              |
-        |           |         | The user account which is going to receive the entitlement associated with the code.              |
-        +-----------+---------+---------------------------------------------------------------------------------------------------+
+        +-----------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter | Type    | Description                                                                                                                                                                          |
+        +-----------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `code`    | String  | The redemption code to redeem. To redeem multiple codes, include this parameter for each redemption code. For example, `code=1234&code=5678`. You may specify a maximum of 20 codes. |
+        +-----------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `user_id` | Integer | The ID of the user that owns the redemption code to redeem.                                                                                                                          |
+        +-----------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
         # Return Values:
-        +-----------+---------------------------------------------------------------------------------+------------------------------------------------------------------+
-        | Parameter | Type                                                                            | Description                                                      |
-        +-----------+---------------------------------------------------------------------------------+------------------------------------------------------------------+
-        | `data`    | Array of payloads each of which includes `code` (string) and `status` (string). | Indicates the success or error state of each key when redeeming. |
-        +-----------+---------------------------------------------------------------------------------+------------------------------------------------------------------+
-
-        # Code Statuses:
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Code                    | Description                                                                                                                                                       |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `SUCCESSFULLY_REDEEMED` | Request successfully redeemed this code to the authenticated user’s account. This status will only ever be encountered when calling the POST API to redeem a key. |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `ALREADY_CLAIMED`       | Code has already been claimed by a Twitch user.                                                                                                                   |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `EXPIRED`               | Code has expired and can no longer be claimed.                                                                                                                    |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `USER_NOT_ELIGIBLE`     | User is not eligible to redeem this code.                                                                                                                         |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `NOT_FOUND`             | Code is not valid and/or does not exist in our database.                                                                                                          |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `INACTIVE`              | Code is not currently active.                                                                                                                                     |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `UNUSED`                | Code has not been claimed. This status will only ever be encountered when calling the `GET API` to get a key’s status.                                            |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `INCORRECT_FORMAT`      | Code was not properly formatted.                                                                                                                                  |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `INTERNAL_ERROR`        | Indicates some internal and/or unknown failure handling this code.                                                                                                |
-        +-------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        +-----------+--------------+----------------------------------------------------------------------------------------------------------------+
+        | Parameter | Type         | Description                                                                                                    |
+        +-----------+--------------+----------------------------------------------------------------------------------------------------------------+
+        | `data`    | Object array | The list of redeemed codes.                                                                                    |
+        +-----------+--------------+----------------------------------------------------------------------------------------------------------------+
+        | `code`    | String       | The redemption code.                                                                                           |
+        +-----------+--------------+----------------------------------------------------------------------------------------------------------------+
+        | `status`  | String       | The redemption code’s status. Possible values are:                                                             |
+        |           |              | - ALREADY_CLAIMED — The code has already been claimed. All codes are single-use.                               |
+        |           |              | - EXPIRED — The code has expired and can no longer be claimed.                                                 |
+        |           |              | - INACTIVE — The code has not been activated.                                                                  |
+        |           |              | - INCORRECT_FORMAT — The code is not properly formatted.                                                       |
+        |           |              | - INTERNAL_ERROR — An internal or unknown error occurred when accessing the code.                              |
+        |           |              | - NOT_FOUND — The code was not found.                                                                          |
+        |           |              | - SUCCESSFULLY_REDEEMED — Successfully redeemed the code and credited the user's account with the entitlement. |
+        |           |              | - UNUSED — The code has not been claimed.                                                                      |
+        |           |              | - USER_NOT_ELIGIBLE — The user is not eligible to redeem this code.                                            |
+        +-----------+--------------+----------------------------------------------------------------------------------------------------------------+
         """
         params = exclude_non_empty(code=code, user_id=user_id)
         return await self._request('POST', 'entitlements/codes', params=params)
@@ -2092,18 +2313,18 @@ class TwitchApi:
         `GET https://api.twitch.tv/helix/extensions/configurations`
 
         # Required Query Parameters:
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Parameter        | Type   | Description                                                                                                                                                                                                 |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_id` | string | The ID of the broadcaster that owns the extension. This parameter is required if you set the `segment` parameter to broadcaster or developer. Do not specify this parameter if you set `segment` to global. |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `extension_id`   | string | The ID of the extension that contains the configuration segment you want to get.                                                                                                                            |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `segment`        | string | The type of configuration segment to get. Valid values are:                                                                                                                                                 |
-        |                  |        | - broadcaster                                                                                                                                                                                               |
-        |                  |        | - developer                                                                                                                                                                                                 |
-        |                  |        | - globalYou may specify one or more segments. To specify multiple segments, include the `segment` parameter for each segment to get. For example, `segment=broadcaster&segment=developer`.                  |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter        | Type   | Description                                                                                                                                                                                                        |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `broadcaster_id` | string | The ID of the broadcaster for the configuration returned. This parameter is required if you set the `segment` parameter to broadcaster or developer. Do not specify this parameter if you set `segment` to global. |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `extension_id`   | string | The ID of the extension that contains the configuration segment you want to get.                                                                                                                                   |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `segment`        | string | The type of configuration segment to get. Valid values are:                                                                                                                                                        |
+        |                  |        | - broadcaster                                                                                                                                                                                                      |
+        |                  |        | - developer                                                                                                                                                                                                        |
+        |                  |        | - globalYou may specify one or more segments. To specify multiple segments, include the `segment` parameter for each segment to get. For example, `segment=broadcaster&segment=developer`.                         |
+        +------------------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
         # Response Fields:
         +------------------+--------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -2142,10 +2363,10 @@ class TwitchApi:
     async def set_extension_configuration_segment(
         self,
         *,
-        extension_id: str,
-        segment: str,
         broadcaster_id: str = _empty,
         content: str = _empty,
+        extension_id: str,
+        segment: str,
         version: str = _empty,
     ):
         """
@@ -2192,7 +2413,7 @@ class TwitchApi:
         +------+-----------------------------------------------+
         | Code | Meaning                                       |
         +------+-----------------------------------------------+
-        | 200  | The configuration was successfully stored.    |
+        | 204  | The configuration was successfully stored.    |
         +------+-----------------------------------------------+
         | 400  | Request was invalid.                          |
         +------+-----------------------------------------------+
@@ -2200,12 +2421,12 @@ class TwitchApi:
         +------+-----------------------------------------------+
         """
         data = exclude_non_empty(
-            extension_id=extension_id, segment=segment, broadcaster_id=broadcaster_id, content=content, version=version
+            broadcaster_id=broadcaster_id, content=content, extension_id=extension_id, segment=segment, version=version
         )
         return await self._request('PUT', 'extensions/configurations', data=data)
 
     async def set_extension_required_configuration(
-        self, *, broadcaster_id: str, extension_id: str, extension_version: str, configuration_version: str
+        self, *, broadcaster_id: str, configuration_version: str, extension_id: str, extension_version: str
     ):
         """
         NEW Enable activation of a specified Extension, after any required broadcaster configuration is correct. The
@@ -2227,7 +2448,7 @@ class TwitchApi:
             }
 
         # URL:
-        `PUT helix/extensions/required_configuration`
+        `PUT https://api.twitch.tv/helix/extensions/required_configuration`
 
         # Pagination Support:
         Not applicable.
@@ -2254,7 +2475,7 @@ class TwitchApi:
         +------+------------------------------------------------+
         | Code | Meaning                                        |
         +------+------------------------------------------------+
-        | 200  | Extension activated successfully.              |
+        | 204  | Extension activated successfully.              |
         +------+------------------------------------------------+
         | 400  | Request was invalid.                           |
         +------+------------------------------------------------+
@@ -2263,12 +2484,12 @@ class TwitchApi:
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
         data = exclude_non_empty(
-            extension_id=extension_id, extension_version=extension_version, configuration_version=configuration_version
+            configuration_version=configuration_version, extension_id=extension_id, extension_version=extension_version
         )
         return await self._request('PUT', 'extensions/required_configuration', params=params, data=data)
 
     async def send_extension_pubsub_message(
-        self, *, target: List[str], broadcaster_id: str, is_global_broadcast: bool, message: str
+        self, *, broadcaster_id: str, is_global_broadcast: bool, message: str, target: List[str]
     ):
         """
         NEW Twitch provides a publish-subscribe system for your EBS to communicate with both the broadcaster and
@@ -2332,7 +2553,7 @@ class TwitchApi:
         +------+------------------------------------------------+
         | Code | Meaning                                        |
         +------+------------------------------------------------+
-        | 200  | The message was published successfully.        |
+        | 204  | The message was published successfully.        |
         +------+------------------------------------------------+
         | 400  | Request was invalid.                           |
         +------+------------------------------------------------+
@@ -2340,11 +2561,11 @@ class TwitchApi:
         +------+------------------------------------------------+
         """
         data = exclude_non_empty(
-            target=target, broadcaster_id=broadcaster_id, is_global_broadcast=is_global_broadcast, message=message
+            broadcaster_id=broadcaster_id, is_global_broadcast=is_global_broadcast, message=message, target=target
         )
         return await self._request('POST', 'extensions/pubsub', data=data)
 
-    async def get_live_channels(self, *, extension_id: str, first: int = _empty, after: str = _empty):
+    async def get_extension_live_channels(self, *, after: str = _empty, extension_id: str, first: int = _empty):
         """
         NEW Returns one page of live channels that have installed or activated a specific Extension, identified by a
         client ID value assigned to the Extension when it is created. A channel that recently went live may take a few
@@ -2404,7 +2625,7 @@ class TwitchApi:
         | 401  | Authorization failed.                        |
         +------+----------------------------------------------+
         """
-        params = exclude_non_empty(extension_id=extension_id, first=first, after=after)
+        params = exclude_non_empty(after=after, extension_id=extension_id, first=first)
         return await self._request('GET', 'extensions/live', params=params)
 
     async def get_extension_secrets(self):
@@ -2516,7 +2737,7 @@ class TwitchApi:
         return await self._request('POST', 'extensions/jwt/secrets', params=params)
 
     async def send_extension_chat_message(
-        self, *, broadcaster_id: str, text: str, extension_id: str, extension_version: str
+        self, *, broadcaster_id: str, extension_id: str, extension_version: str, text: str
     ):
         """
         NEW Sends a specified chat message to a specified channel. The message will appear in the channel’s chat as a
@@ -2565,7 +2786,7 @@ class TwitchApi:
         +------+---------------------------------------------------------+
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
-        data = exclude_non_empty(text=text, extension_id=extension_id, extension_version=extension_version)
+        data = exclude_non_empty(extension_id=extension_id, extension_version=extension_version, text=text)
         return await self._request('POST', 'extensions/chat', params=params, data=data)
 
     async def get_extensions(self, *, extension_id: str, extension_version: str = _empty):
@@ -2629,7 +2850,7 @@ class TwitchApi:
         +-------------------------------+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `state`                       | string  | The current state of the Extension. Valid values are `"InTest"`, `"InReview"`, `"Rejected"`, `"Approved"`, `"Released"`, `"Deprecated"`, `"PendingAction"`, `"AssetsUploaded"`, `"Deleted"`. |
         +-------------------------------+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `subscriptions_support_level` | object  | Indicates if the Extension can determine a user’s subscription level on the channel the Extension is installed on.                                                                           |
+        | `subscriptions_support_level` | string  | Indicates if the Extension can determine a user’s subscription level on the channel the Extension is installed on.                                                                           |
         +-------------------------------+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `summary`                     | string  | A brief description of the Extension.                                                                                                                                                        |
         +-------------------------------+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -2812,12 +3033,13 @@ class TwitchApi:
     async def update_extension_bits_product(
         self,
         *,
-        sku: str,
-        cost: Dict[str, Any],
+        cost_amount: int,
+        cost_type: str,
         display_name: str,
-        in_development: bool = _empty,
         expiration: str = _empty,
+        in_development: bool = _empty,
         is_broadcast: bool = _empty,
+        sku: str,
     ):
         """
         NEW Add or update a Bits products that belongs to an Extension.
@@ -2899,24 +3121,27 @@ class TwitchApi:
         | 401  | Authorization failed.                       |
         +------+---------------------------------------------+
         """
+        _cost = exclude_non_empty(amount=cost_amount, type=cost_type)
         data = exclude_non_empty(
-            sku=sku,
-            cost=cost,
+            cost=_cost or _empty,
             display_name=display_name,
-            in_development=in_development,
             expiration=expiration,
+            in_development=in_development,
             is_broadcast=is_broadcast,
+            sku=sku,
         )
         return await self._request('PUT', 'bits/extensions', data=data)
 
     async def create_eventsub_subscription(
-        self, *, type_: str, version: str, condition: Dict[str, Any], transport: Dict[str, Any]
+        self, *, condition: Dict[str, Any], transport: Dict[str, Any], type_: str, version: str
     ):
         """
         Creates an EventSub subscription.
 
         # Authentication:
-        Requires an application OAuth access token.
+        Requires an app access token.
+
+        To create a subscription, you must use an app access token; however, if the subscription type requires user authorization, the user must have granted your app permissions to receive those events before you subscribe to them. For example, to subscribe to channel.subscribe events, the user must have granted your app permission which adds the `channel:read:subscriptions` scope to your app’s client ID.
 
         # URL:
         `POST https://api.twitch.tv/helix/eventsub/subscriptions`
@@ -2987,7 +3212,7 @@ class TwitchApi:
         | 409  | The subscription already exists.                                                         |
         +------+------------------------------------------------------------------------------------------+
         """
-        data = exclude_non_empty(type=type_, version=version, condition=condition, transport=transport)
+        data = exclude_non_empty(condition=condition, transport=transport, type=type_, version=version)
         return await self._request('POST', 'eventsub/subscriptions', data=data)
 
     async def delete_eventsub_subscription(self, *, id_: str):
@@ -3024,7 +3249,7 @@ class TwitchApi:
         params = exclude_non_empty(id=id_)
         return await self._request('DELETE', 'eventsub/subscriptions', params=params)
 
-    async def get_eventsub_subscriptions(self, *, status: str = _empty, type_: str = _empty, after: str = _empty):
+    async def get_eventsub_subscriptions(self, *, after: str = _empty, status: str = _empty, type_: str = _empty):
         """
         Gets a list of your EventSub subscriptions. The list is paginated and ordered by the oldest subscription first.
 
@@ -3106,7 +3331,7 @@ class TwitchApi:
         | 401  | The caller failed authentication. Verify that your access token and client ID are valid. |
         +------+------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(status=status, type=type_, after=after)
+        params = exclude_non_empty(after=after, status=status, type=type_)
         return await self._request('GET', 'eventsub/subscriptions', params=params)
 
     async def get_top_games(self, *, after: str = _empty, before: str = _empty, first: int = _empty):
@@ -3193,11 +3418,9 @@ class TwitchApi:
 
     async def get_creator_goals(self, *, broadcaster_id: str):
         """
-        BETA This is an Open Beta release of the Creator Goals API. All aspects of the API and documention are subject
-        to change. Do not use this API in production environments. See Product Lifecycle for more information regarding
-        the expectations of beta versions.
-
         NEW Gets the broadcaster’s list of active goals. Use this to get the current progress of each goal.
+
+        Alternatively, you can subscribe to receive notifications when a goal makes progress using the channel.goal.progress subscription type. Read more
 
         # Authorization:
         Requires a user OAuth access token with scope set to channel:read:goals. The ID in the `broadcaster_id` query parameter must match the user ID associated with the user OAuth token. In other words, only the broadcaster can see their goals.
@@ -3230,7 +3453,8 @@ class TwitchApi:
         +---------------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `type`              | string       | The type of goal. Possible values are:                                                                                                                                                                                                       |
         |                     |              | - follower — The goal is to increase followers.                                                                                                                                                                                              |
-        |                     |              | - subscription — The goal is to increase subscriptions.                                                                                                                                                                                      |
+        |                     |              | - subscription — The goal is to increase subscriptions. This type shows the net increase or decrease in subscriptions.                                                                                                                       |
+        |                     |              | - new_subscription — The goal is to increase subscriptions. This type shows only the net increase in subscriptions (it does not account for users that stopped subscribing since the goal's inception).                                      |
         +---------------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `description`       | string       | A description of the goal, if specified. The description may contain a maximum of 40 characters.                                                                                                                                             |
         +---------------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -3239,6 +3463,8 @@ class TwitchApi:
         |                     |              | If the goal is to increase followers, this field is set to the current number of followers. This number increases with new followers and decreases if users unfollow the channel.                                                            |
         |                     |              |                                                                                                                                                                                                                                              |
         |                     |              | For subscriptions, `current_amount` is increased and decreased by the points value associated with the subscription tier. For example, if a tier-two subscription is worth 2 points, `current_amount` is increased or decreased by 2, not 1. |
+        |                     |              |                                                                                                                                                                                                                                              |
+        |                     |              | For new_subscriptions, `current_amount` is increased by the points value associated with the subscription tier. For example, if a tier-two subscription is worth 2 points, `current_amount` is increased by 2, not 1.                        |
         +---------------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `target_amount`     | integer      | The goal’s target value. For example, if the broadcaster has 200 followers before creating the goal, and their goal is to double that number, this field is set to 400.                                                                      |
         +---------------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -3260,7 +3486,7 @@ class TwitchApi:
         return await self._request('GET', 'goals', params=params)
 
     async def get_hype_train_events(
-        self, *, broadcaster_id: str, first: int = _empty, id_: str = _empty, cursor: str = _empty
+        self, *, broadcaster_id: str, cursor: str = _empty, first: int = _empty, id_: str = _empty
     ):
         """
         # Description: Gets the information of the most recent Hype Train of the given channel ID. When there is
@@ -3343,7 +3569,7 @@ class TwitchApi:
         | `pagination`        | string  | A cursor value, to be used in a subsequent requests to specify the starting point of the next set of results                                                                                                                                                                                                                                               |
         +---------------------+---------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, first=first, id=id_, cursor=cursor)
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, cursor=cursor, first=first, id=id_)
         return await self._request('GET', 'hypetrain/events', params=params)
 
     async def check_automod_status(self, *, broadcaster_id: str, msg_id: str, msg_text: str, user_id: str):
@@ -3396,7 +3622,7 @@ class TwitchApi:
         data = exclude_non_empty(msg_id=msg_id, msg_text=msg_text, user_id=user_id)
         return await self._request('POST', 'moderation/enforcements/status', params=params, data=data)
 
-    async def manage_held_automod_messages(self, *, user_id: str, msg_id: str, action: str):
+    async def manage_held_automod_messages(self, *, action: str, msg_id: str, user_id: str):
         """
         Allow or deny a message that was held for review by AutoMod.
 
@@ -3438,11 +3664,201 @@ class TwitchApi:
         | 404  | Message not found or invalid `msg_id`.                                  |
         +------+-------------------------------------------------------------------------+
         """
-        data = exclude_non_empty(user_id=user_id, msg_id=msg_id, action=action)
+        data = exclude_non_empty(action=action, msg_id=msg_id, user_id=user_id)
         return await self._request('POST', 'moderation/automod/message', data=data)
 
+    async def get_automod_settings(self, *, broadcaster_id: str, moderator_id: str):
+        """
+        NEW Gets the broadcaster’s AutoMod settings, which are used to automatically block inappropriate or harassing
+        messages from appearing in the broadcaster’s chat room.
+
+        # Authorization:
+        Requires a User access token with scope set to `moderator:read:automod_settings`.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/moderation/automod/settings`
+
+        # Query Parameters:
+        +----------------+----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                          |
+        +----------------+----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose AutoMod settings you want to get.                                                                                    |
+        +----------------+----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token.   |
+        |                |          |        |                                                                                                                                                      |
+        |                |          |        | If the broadcaster wants to get their own AutoMod settings (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too. |
+        +----------------+----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | Field                      | Type     | Description                                                                                                                          |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | data                       | object[] | The list of AutoMod settings. The list contains a single object that contains all the AutoMod settings.                              |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | aggression                 | Integer  | The Automod level for hostility involving aggression.                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id             | String   | The broadcaster’s ID.                                                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | bullying                   | Integer  | The Automod level for hostility involving name calling or insults.                                                                   |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | disability                 | Integer  | The Automod level for discrimination against disability.                                                                             |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | misogyny                   | Integer  | The Automod level for discrimination against women.                                                                                  |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id               | String   | The moderator’s ID.                                                                                                                  |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | overall_level              | Integer  | The default AutoMod level for the broadcaster. This field is null if the broadcaster has set one or more of the individual settings. |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | race_ethnicity_or_religion | Integer  | The Automod level for racial discrimination.                                                                                         |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | sex_based_terms            | Integer  | The Automod level for sexual content.                                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | sexuality_sex_or_gender    | Integer  | The AutoMod level for discrimination based on sexuality, sex, or gender.                                                             |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | swearing                   | Integer  | The Automod level for profanity.                                                                                                     |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-------------------------+
+        | Code | Meaning                 |
+        +------+-------------------------+
+        | 200  | Success.                |
+        +------+-------------------------+
+        | 400  | Malformed request.      |
+        +------+-------------------------+
+        | 401  | Authentication failure. |
+        +------+-------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        return await self._request('GET', 'moderation/automod/settings', params=params)
+
+    async def update_automod_settings(
+        self,
+        *,
+        broadcaster_id: str,
+        moderator_id: str,
+        aggression: int = _empty,
+        bullying: int = _empty,
+        disability: int = _empty,
+        misogyny: int = _empty,
+        overall_level: int = _empty,
+        race_ethnicity_or_religion: int = _empty,
+        sex_based_terms: int = _empty,
+        sexuality_sex_or_gender: int = _empty,
+        swearing: int = _empty,
+    ):
+        """
+        NEW Updates the broadcaster’s AutoMod settings, which are used to automatically block inappropriate or harassing
+        messages from appearing in the broadcaster’s chat room.
+
+        # Authorization:
+        Requires a User access token with scope set to `moderator:manage:automod_settings`.
+
+        # URL:
+        `PUT https://api.twitch.tv/helix/moderation/automod/settings`
+
+        # Query Parameters:
+        +----------------+----------+--------+---------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                             |
+        +----------------+----------+--------+---------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose AutoMod settings you want to update.                                                                                    |
+        +----------------+----------+--------+---------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token.      |
+        |                |          |        |                                                                                                                                                         |
+        |                |          |        | If the broadcaster wants to update their own AutoMod settings (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too. |
+        +----------------+----------+--------+---------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Request Body:
+        Because PUT is an overwrite operation, you must include all the fields you want set after the operation completes. Typically, you’ll send a GET request, update the fields you want to change, and pass that object in the PUT request.
+
+        You can set either `overall_level` or the individual settings like `aggression`, but not both.
+
+        Setting `overall_level` applies default values to the individual settings. However, setting `overall_level` to 4 does not mean that it applies 4 to all the individual settings. Instead, it applies a set of recommended defaults to the rest of the settings. For example, if you set `overall_level` to 2, Twitch provides some filtering on discrimination and sexual content, but more filtering on hostility (see the first example response).
+
+        If `overall_level` is currently set and you update `swearing` to 3,  `overall_level` will be set to null and all settings other than `swearing` will be set to 0. The same is true if individual settings are set and you update `overall_level` to 3 — all the individual settings are updated to reflect the default level.
+
+        Note that if you set all the individual settings to values that match what `overall_level` would have set them to, Twitch changes AutoMod to use the default AutoMod level instead of using the individual settings.
+
+        Valid values for all levels are from 0 (no filtering) through 4 (most aggressive filtering). These levels affect how aggressively AutoMod holds back messages for moderators to review before they appear in chat or are denied (not shown).
+
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | Field                      | Type    | Description                                                              |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | aggression                 | Integer | The Automod level for hostility involving aggression.                    |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | bullying                   | Integer | The Automod level for hostility involving name calling or insults.       |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | disability                 | Integer | The Automod level for discrimination against disability.                 |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | misogyny                   | Integer | The Automod level for discrimination against women.                      |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | overall_level              | Integer | The default AutoMod level for the broadcaster.                           |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | race_ethnicity_or_religion | Integer | The Automod level for racial discrimination.                             |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | sex_based_terms            | Integer | The Automod level for sexual content.                                    |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | sexuality_sex_or_gender    | Integer | The AutoMod level for discrimination based on sexuality, sex, or gender. |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+        | swearing                   | Integer | The Automod level for profanity.                                         |
+        +----------------------------+---------+--------------------------------------------------------------------------+
+
+        # Response Body:
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | Field                      | Type     | Description                                                                                                                          |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | data                       | object[] | The list of AutoMod settings. The list contains a single object that contains all the AutoMod settings.                              |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | aggression                 | Integer  | The Automod level for hostility involving aggression.                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id             | String   | The broadcaster’s ID.                                                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | bullying                   | Integer  | The Automod level for hostility involving name calling or insults.                                                                   |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | disability                 | Integer  | The Automod level for discrimination against disability.                                                                             |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | misogyny                   | Integer  | The Automod level for discrimination against women.                                                                                  |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id               | String   | The moderator’s ID.                                                                                                                  |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | overall_level              | Integer  | The default AutoMod level for the broadcaster. This field is null if the broadcaster has set one or more of the individual settings. |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | race_ethnicity_or_religion | Integer  | The Automod level for racial discrimination.                                                                                         |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | sex_based_terms            | Integer  | The Automod level for sexual content.                                                                                                |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | sexuality_sex_or_gender    | Integer  | The AutoMod level for discrimination based on sexuality, sex, or gender.                                                             |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+        | swearing                   | Integer  | The Automod level for profanity.                                                                                                     |
+        +----------------------------+----------+--------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-------------------------+
+        | Code | Meaning                 |
+        +------+-------------------------+
+        | 200  | Success.                |
+        +------+-------------------------+
+        | 400  | Malformed request.      |
+        +------+-------------------------+
+        | 401  | Authentication failure. |
+        +------+-------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        data = exclude_non_empty(
+            aggression=aggression,
+            bullying=bullying,
+            disability=disability,
+            misogyny=misogyny,
+            overall_level=overall_level,
+            race_ethnicity_or_religion=race_ethnicity_or_religion,
+            sex_based_terms=sex_based_terms,
+            sexuality_sex_or_gender=sexuality_sex_or_gender,
+            swearing=swearing,
+        )
+        return await self._request('PUT', 'moderation/automod/settings', params=params, data=data)
+
     async def get_banned_events(
-        self, *, broadcaster_id: str, user_id: Union[str, List[str]] = _empty, after: str = _empty, first: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, user_id: Union[str, List[str]] = _empty
     ):
         """
         Returns all user ban and un-ban events for a channel.
@@ -3522,17 +3938,17 @@ class TwitchApi:
         | `pagination`                   | object containing a string | A cursor value, to be used in a subsequent request to specify the starting point of the next set of results. |
         +--------------------------------+----------------------------+--------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, user_id=user_id, after=after, first=first)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, user_id=user_id)
         return await self._request('GET', 'moderation/banned/events', params=params)
 
     async def get_banned_users(
         self,
         *,
-        broadcaster_id: str,
-        user_id: Union[str, List[str]] = _empty,
-        first: str = _empty,
         after: str = _empty,
         before: str = _empty,
+        broadcaster_id: str,
+        first: str = _empty,
+        user_id: Union[str, List[str]] = _empty,
     ):
         """
         Returns all banned and timed-out users for a channel.
@@ -3599,12 +4015,300 @@ class TwitchApi:
         +-------------------+----------------------------+--------------------------------------------------------------------------------------------------------------+
         """
         params = exclude_non_empty(
-            broadcaster_id=broadcaster_id, user_id=user_id, first=first, after=after, before=before
+            after=after, before=before, broadcaster_id=broadcaster_id, first=first, user_id=user_id
         )
         return await self._request('GET', 'moderation/banned', params=params)
 
+    async def ban_user(
+        self, *, broadcaster_id: str, moderator_id: str, duration: int = _empty, reason: str, user_id: str
+    ):
+        """
+        NEW Bans a user from participating in a broadcaster’s chat room, or puts them in a timeout. For more information
+        about banning or putting users in a timeout, see Ban a User and Timeout a User.
+
+        If the user is currently in a timeout, you can call this endpoint to change the duration of the timeout or ban them altogether. If the user is currently banned, you cannot call this method to put them in a timeout instead.
+
+        To remove a ban or end a timeout, see Unban user.
+
+        # Authentication:
+        Requires a User access token with scope set to `moderator:manage:banned_users`.
+
+        # URL:
+        `POST https://api.twitch.tv/helix/moderation/bans`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose chat room the user is being banned from.                                                                           |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to ban the user (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.                 |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Request Body:
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | Field    | Required | Type    | Description                                                                                                                   |
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | data     | Yes      | Object  | The user to ban or put in a timeout.                                                                                          |
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | duration | No       | Integer | To ban a user indefinitely, don’t include this field.                                                                         |
+        |          |          |         |                                                                                                                               |
+        |          |          |         | To put a user in a timeout, include this field and specify the timeout period, in seconds.                                    |
+        |          |          |         |                                                                                                                               |
+        |          |          |         | The minimum timeout is 1 second and the maximum is 1,209,600 seconds (2 weeks).                                               |
+        |          |          |         |                                                                                                                               |
+        |          |          |         | To end a user’s timeout early, set this field to 1, or send an Unban user request.                                            |
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | reason   | Yes      | String  | The reason the user is being banned or put in a timeout. The text is user defined and limited to a maximum of 500 characters. |
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+        | user_id  | Yes      | String  | The ID of the user to ban or put in a timeout.                                                                                |
+        +----------+----------+---------+-------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | Field          | Type         | Description                                                                                                                      |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | data           | Object array | A list that contains the user you successfully banned or put in a timeout.                                                       |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | String       | The broadcaster whose chat room the user was banned from chatting in.                                                            |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | end_time       | String       | The UTC date and time (in RFC3339 format) that the timeout will end. Is null if the user was banned instead of put in a timeout. |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | String       | The moderator that banned or put the user in the timeout.                                                                        |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+        | user_id        | String       | The user that was banned or was put in a timeout.                                                                                |
+        +----------------+--------------+----------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | Code | Meaning                                                                                                         |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 200  | Success                                                                                                         |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 400  | Bad Request                                                                                                     |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 401  | Unauthorized                                                                                                    |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 403  | Forbidden                                                                                                       |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 429  | Too Many Requests. It is possible for too many ban requests to occur even within normal Twitch API rate limits. |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        | 500  | Internal Server Error                                                                                           |
+        +------+-----------------------------------------------------------------------------------------------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        _data_ = exclude_non_empty(duration=duration, reason=reason, user_id=user_id)
+        data = exclude_non_empty(data=_data_ or _empty)
+        return await self._request('POST', 'moderation/bans', params=params, data=data)
+
+    async def unban_user(self, *, broadcaster_id: str, moderator_id: str, user_id: str):
+        """
+        NEW Removes the ban or timeout that was placed on the specified user (see Ban user).
+
+        # Authentication:
+        Requires a User access token with scope set to `moderator:manage:banned_users`.
+
+        # URL:
+        `DELETE https://api.twitch.tv/helix/moderation/bans`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster whose chat room the user is banned from chatting in.                                                                     |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to remove the ban (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.               |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | user_id        | Yes      | String | The ID of the user to remove the ban or timeout from.                                                                                              |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        If the request succeeds, the status code is 204 No Content.
+
+        # Response Codes:
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | Code | Meaning                                                                                                           |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 204  | No Content                                                                                                        |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 400  | Bad Request                                                                                                       |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 401  | Unauthorized                                                                                                      |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 403  | Forbidden                                                                                                         |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 429  | Too Many Requests. It is possible for too many unban requests to occur even within normal Twitch API rate limits. |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        | 500  | Internal Server Error                                                                                             |
+        +------+-------------------------------------------------------------------------------------------------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id, user_id=user_id)
+        return await self._request('DELETE', 'moderation/bans', params=params)
+
+    async def get_blocked_terms(
+        self, *, after: str = _empty, broadcaster_id: str, first: int = _empty, moderator_id: str
+    ):
+        """
+        NEW Gets the broadcaster’s list of non-private, blocked words or phrases. These are the terms that the
+        broadcaster or moderator added manually, or that were denied by AutoMod.
+
+        # Authorization:
+        Requires a User access token with scope set to `moderator:read:blocked_terms`.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/moderation/blocked_terms`
+
+        # Query Parameters:
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type    | Description                                                                                                                                                         |
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | after          | No       | String  | The cursor used to get the next page of results. The Pagination object in the response contains the cursor’s value.                                                 |
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String  | The ID of the broadcaster whose blocked terms you’re getting.                                                                                                       |
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | first          | No       | Integer | The maximum number of blocked terms to return per page in the response. The minimum page size is 1 blocked term per page and the maximum is 100. The default is 20. |
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String  | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token.                  |
+        |                |          |         |                                                                                                                                                                     |
+        |                |          |         | If the broadcaster wants to get their own block terms (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.                     |
+        +----------------+----------+---------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Field          | Type         | Description                                                                                                                                                                       |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | data           | object array | The list of blocked terms. The list is in descending order of when they were created (see the `created_at` timestamp).                                                            |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | String       | The broadcaster that owns the list of blocked terms.                                                                                                                              |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | created_at     | String       | The UTC date and time (in RFC3339 format) of when the term was blocked.                                                                                                           |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | expires_at     | String       | The UTC date and time (in RFC3339 format) of when the blocked term is set to expire. After the block expires, user’s will be able to use the term in the broadcaster’s chat room. |
+        |                |              |                                                                                                                                                                                   |
+        |                |              | This field is null if the term was added manually or was permanently blocked by AutoMod.                                                                                          |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | id             | String       | An ID that uniquely identifies this blocked term.                                                                                                                                 |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | String       | The moderator that blocked the word or phrase from being used in the broadcaster’s chat room.                                                                                     |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | text           | String       | The blocked word or phrase.                                                                                                                                                       |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | updated_at     | String       | The UTC date and time (in RFC3339 format) of when the term was updated.                                                                                                           |
+        |                |              |                                                                                                                                                                                   |
+        |                |              | When the term is added, this timestamp is the same as created_at. The timestamp changes as AutoMod continues to deny the term.                                                    |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | pagination     | object       | The information used to paginate the response data.                                                                                                                               |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | cursor         | String       | The cursor used to page results. Used to set the request’s after query parameter.                                                                                                 |
+        +----------------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-------------------------+
+        | Code | Meaning                 |
+        +------+-------------------------+
+        | 200  | Success.                |
+        +------+-------------------------+
+        | 400  | Malformed request.      |
+        +------+-------------------------+
+        | 401  | Authentication failure. |
+        +------+-------------------------+
+        """
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, moderator_id=moderator_id)
+        return await self._request('GET', 'moderation/blocked_terms', params=params)
+
+    async def add_blocked_term(self, *, broadcaster_id: str, moderator_id: str, text: str):
+        """
+        NEW Adds a word or phrase to the broadcaster’s list of blocked terms. These are the terms that broadcasters
+        don’t want used in their chat room.
+
+        # Authentication:
+        Requires a User access token with scope set to `moderator:manage:blocked_terms`.
+
+        # URL:
+        `POST https://api.twitch.tv/helix/moderation/blocked_terms`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster that owns the list of blocked terms.                                                                                     |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to add the blocked term (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.         |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Request Body:
+        +-------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Field | Required | Type   | Description                                                                                                                                                    |
+        +-------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | text  | Yes      | String | The word or phrase to block from being used in the broadcaster’s chat room.                                                                                    |
+        |       |          |        |                                                                                                                                                                |
+        |       |          |        | The term must contain a minimum of 2 characters and may contain up to a maximum of 500 characters.                                                             |
+        |       |          |        |                                                                                                                                                                |
+        |       |          |        | Terms can use a wildcard character (*). The wildcard character must appear at the beginning or end of a word, or set of characters. For example, *foo or foo*. |
+        +-------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | Field          | Type         | Description                                                                                                       |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | data           | object array | The list of blocked terms. The list will contain the single blocked term that the broadcaster added.              |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | String       | The broadcaster that owns the list of blocked terms.                                                              |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | created_at     | String       | The UTC date and time (in RFC3339 format) of when the term was blocked.                                           |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | expires_at     | String       | Is set to null.                                                                                                   |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | id             | String       | An ID that uniquely identifies this blocked term.                                                                 |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | String       | The moderator that blocked the word or phrase from being used in the broadcaster’s chat room.                     |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | text           | String       | The blocked word or phrase.                                                                                       |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        | updated_at     | String       | The UTC date and time (in RFC3339 format) of when the term was updated. This timestamp is the same as created_at. |
+        +----------------+--------------+-------------------------------------------------------------------------------------------------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, moderator_id=moderator_id)
+        data = exclude_non_empty(text=text)
+        return await self._request('POST', 'moderation/blocked_terms', params=params, data=data)
+
+    async def remove_blocked_term(self, *, broadcaster_id: str, id_: str, moderator_id: str):
+        """
+        NEW Removes the word or phrase that the broadcaster is blocking users from using in their chat room.
+
+        # Authentication:
+        Requires a User access token with scope set to `moderator:manage:blocked_terms`.
+
+        # URL:
+        `DELETE https://api.twitch.tv/helix/moderation/blocked_terms`
+
+        # Query Parameters:
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                                                                                                        |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster that owns the list of blocked terms.                                                                                     |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | id             | Yes      | String | The ID of the blocked term you want to delete.                                                                                                     |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+        | moderator_id   | Yes      | String | The ID of a user that has permission to moderate the broadcaster’s chat room. This ID must match the user ID associated with the user OAuth token. |
+        |                |          |        |                                                                                                                                                    |
+        |                |          |        | If the broadcaster wants to delete the blocked term (instead of having the moderator do it), set this parameter to the broadcaster’s ID, too.      |
+        +----------------+----------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        # Response Body:
+        If the request succeeds, the status code is 204 No Content.
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_, moderator_id=moderator_id)
+        return await self._request('DELETE', 'moderation/blocked_terms', params=params)
+
     async def get_moderators(
-        self, *, broadcaster_id: str, user_id: Union[str, List[str]] = _empty, first: str = _empty, after: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, user_id: Union[str, List[str]] = _empty
     ):
         """
         Returns all moderators in a channel. Note: This endpoint does not return the broadcaster in the response, as
@@ -3656,11 +4360,11 @@ class TwitchApi:
         | `pagination` | object containing a string | A cursor value, to be used in subsequent requests to specify the starting point of the next set of results. |
         +--------------+----------------------------+-------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, user_id=user_id, first=first, after=after)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, user_id=user_id)
         return await self._request('GET', 'moderation/moderators', params=params)
 
     async def get_moderator_events(
-        self, *, broadcaster_id: str, user_id: Union[str, List[str]] = _empty, after: str = _empty, first: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, user_id: Union[str, List[str]] = _empty
     ):
         """
         Returns a list of moderators or users added and removed as moderators from a channel.
@@ -3727,14 +4431,14 @@ class TwitchApi:
         | `user_name`         | string                     | Name of the user.                                                                                           |
         +---------------------+----------------------------+-------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, user_id=user_id, after=after, first=first)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, user_id=user_id)
         return await self._request('GET', 'moderation/moderators/events', params=params)
 
     async def get_polls(
-        self, *, broadcaster_id: str, id_: Union[str, List[str]] = _empty, after: str = _empty, first: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, id_: Union[str, List[str]] = _empty
     ):
         """
-        NEW Get information about all polls or specific polls for a Twitch channel. Poll information is available for 90
+        Get information about all polls or specific polls for a Twitch channel. Poll information is available for 90
         days.
 
         # Authorization:
@@ -3838,23 +4542,23 @@ class TwitchApi:
         | 401  | Authorization failed.               |
         +------+-------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_, after=after, first=first)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, id=id_)
         return await self._request('GET', 'polls', params=params)
 
     async def create_poll(
         self,
         *,
-        broadcaster_id: str,
-        title: str,
-        choices: List[Dict[str, Any]],
-        duration: int,
-        bits_voting_enabled: bool = _empty,
         bits_per_vote: int = _empty,
-        channel_points_voting_enabled: bool = _empty,
+        bits_voting_enabled: bool = _empty,
+        broadcaster_id: str,
         channel_points_per_vote: int = _empty,
+        channel_points_voting_enabled: bool = _empty,
+        choice_title: List[str],
+        duration: int,
+        title: str,
     ):
         """
-        NEW Create a poll for a specific Twitch channel.
+        Create a poll for a specific Twitch channel.
 
         # Authorization:
         - User OAuth token
@@ -3976,21 +4680,22 @@ class TwitchApi:
         | 401  | Authorization failed.      |
         +------+----------------------------+
         """
+        _choices = [exclude_non_empty(title=_title_part) for _title_part in choice_title]
         data = exclude_non_empty(
-            broadcaster_id=broadcaster_id,
-            title=title,
-            choices=choices,
-            duration=duration,
-            bits_voting_enabled=bits_voting_enabled,
             bits_per_vote=bits_per_vote,
-            channel_points_voting_enabled=channel_points_voting_enabled,
+            bits_voting_enabled=bits_voting_enabled,
+            broadcaster_id=broadcaster_id,
             channel_points_per_vote=channel_points_per_vote,
+            channel_points_voting_enabled=channel_points_voting_enabled,
+            choices=_choices or _empty,
+            duration=duration,
+            title=title,
         )
         return await self._request('POST', 'polls', data=data)
 
     async def end_poll(self, *, broadcaster_id: str, id_: str, status: str):
         """
-        NEW End a poll that is currently active.
+        End a poll that is currently active.
 
         # Authorization:
         - User OAuth token
@@ -4087,10 +4792,10 @@ class TwitchApi:
         return await self._request('PATCH', 'polls', data=data)
 
     async def get_predictions(
-        self, *, broadcaster_id: str, id_: Union[str, List[str]] = _empty, after: str = _empty, first: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, id_: Union[str, List[str]] = _empty
     ):
         """
-        NEW Get information about all Channel Points Predictions or specific Channel Points Predictions for a Twitch
+        Get information about all Channel Points Predictions or specific Channel Points Predictions for a Twitch
         channel. Results are ordered by most recent, so it can be assumed that the currently active or locked Prediction
         will be the first item.
 
@@ -4199,14 +4904,14 @@ class TwitchApi:
         | 401  | Authorization failed.                     |
         +------+-------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_, after=after, first=first)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, id=id_)
         return await self._request('GET', 'predictions', params=params)
 
     async def create_prediction(
-        self, *, broadcaster_id: str, title: str, outcomes: List[Dict[str, Any]], prediction_window: int
+        self, *, broadcaster_id: str, outcome_title: List[str], prediction_window: int, title: str
     ):
         """
-        NEW Create a Channel Points Prediction for a specific Twitch channel.
+        Create a Channel Points Prediction for a specific Twitch channel.
 
         # Authorization:
         - User OAuth token
@@ -4309,14 +5014,18 @@ class TwitchApi:
         | 401  | Authorization failed.            |
         +------+----------------------------------+
         """
+        _outcomes = [exclude_non_empty(title=_title_part) for _title_part in outcome_title]
         data = exclude_non_empty(
-            broadcaster_id=broadcaster_id, title=title, outcomes=outcomes, prediction_window=prediction_window
+            broadcaster_id=broadcaster_id,
+            outcomes=_outcomes or _empty,
+            prediction_window=prediction_window,
+            title=title,
         )
         return await self._request('POST', 'predictions', data=data)
 
     async def end_prediction(self, *, broadcaster_id: str, id_: str, status: str, winning_outcome_id: str = _empty):
         """
-        NEW Lock, resolve, or cancel a Channel Points Prediction. Active Predictions can be updated to be “locked,”
+        Lock, resolve, or cancel a Channel Points Prediction. Active Predictions can be updated to be “locked,”
 
         “resolved,” or “canceled.” Locked Predictions can be updated to be “resolved” or “canceled.”
 
@@ -4432,12 +5141,12 @@ class TwitchApi:
     async def get_channel_stream_schedule(
         self,
         *,
+        after: str = _empty,
         broadcaster_id: str,
+        first: int = _empty,
         id_: Union[str, List[str]] = _empty,
         start_time: str = _empty,
         utc_offset: str = _empty,
-        first: int = _empty,
-        after: str = _empty,
     ):
         """
         NEW Gets all scheduled broadcasts or specific scheduled broadcasts from a channel’s stream schedule. Scheduled
@@ -4453,13 +5162,13 @@ class TwitchApi:
         Forward pagination.
 
         # Required Query Parameters:
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Parameter        | Type   | Description                                                                                                                                     |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_id` | string | User ID of the broadcaster who owns the channel streaming schedule. Provided `broadcaster_id` must match the `user_id` in the user OAuth token. |
-        |                  |        |                                                                                                                                                 |
-        |                  |        | Maximum: 1                                                                                                                                      |
-        +------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------------------+
+        +------------------+--------+---------------------------------------------------------------------+
+        | Parameter        | Type   | Description                                                         |
+        +------------------+--------+---------------------------------------------------------------------+
+        | `broadcaster_id` | string | User ID of the broadcaster who owns the channel streaming schedule. |
+        |                  |        |                                                                     |
+        |                  |        | Maximum: 1                                                          |
+        +------------------+--------+---------------------------------------------------------------------+
 
         # Optional Query Parameters:
         +--------------+---------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -4529,12 +5238,12 @@ class TwitchApi:
         +------+-----------------------------------------------+
         """
         params = exclude_non_empty(
+            after=after,
             broadcaster_id=broadcaster_id,
+            first=first,
             id=id_,
             start_time=start_time,
             utc_offset=utc_offset,
-            first=first,
-            after=after,
         )
         return await self._request('GET', 'schedule', params=params)
 
@@ -4580,9 +5289,9 @@ class TwitchApi:
         *,
         broadcaster_id: str,
         is_vacation_enabled: bool = _empty,
-        vacation_start_time: str = _empty,
-        vacation_end_time: str = _empty,
         timezone: str = _empty,
+        vacation_end_time: str = _empty,
+        vacation_start_time: str = _empty,
     ):
         """
         NEW Update the settings for a channel’s stream schedule. This can be used for setting vacation details.
@@ -4634,9 +5343,9 @@ class TwitchApi:
         params = exclude_non_empty(
             broadcaster_id=broadcaster_id,
             is_vacation_enabled=is_vacation_enabled,
-            vacation_start_time=vacation_start_time,
-            vacation_end_time=vacation_end_time,
             timezone=timezone,
+            vacation_end_time=vacation_end_time,
+            vacation_start_time=vacation_start_time,
         )
         return await self._request('PATCH', 'schedule/settings', params=params)
 
@@ -4644,11 +5353,11 @@ class TwitchApi:
         self,
         *,
         broadcaster_id: str,
+        category_id: str = _empty,
+        duration: str = _empty,
+        is_recurring: bool,
         start_time: str,
         timezone: str,
-        is_recurring: bool,
-        duration: str = _empty,
-        category_id: str = _empty,
         title: str = _empty,
     ):
         """
@@ -4750,11 +5459,11 @@ class TwitchApi:
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
         data = exclude_non_empty(
+            category_id=category_id,
+            duration=duration,
+            is_recurring=is_recurring,
             start_time=start_time,
             timezone=timezone,
-            is_recurring=is_recurring,
-            duration=duration,
-            category_id=category_id,
             title=title,
         )
         return await self._request('POST', 'schedule/segment', params=params, data=data)
@@ -4764,12 +5473,12 @@ class TwitchApi:
         *,
         broadcaster_id: str,
         id_: str,
-        start_time: str = _empty,
-        duration: str = _empty,
         category_id: str = _empty,
-        title: str = _empty,
+        duration: str = _empty,
         is_canceled: bool = _empty,
+        start_time: str = _empty,
         timezone: str = _empty,
+        title: str = _empty,
     ):
         """
         NEW Update a single scheduled broadcast or a recurring scheduled broadcast for a channel’s stream schedule.
@@ -4869,12 +5578,12 @@ class TwitchApi:
         """
         params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_)
         data = exclude_non_empty(
-            start_time=start_time,
-            duration=duration,
             category_id=category_id,
-            title=title,
+            duration=duration,
             is_canceled=is_canceled,
+            start_time=start_time,
             timezone=timezone,
+            title=title,
         )
         return await self._request('PATCH', 'schedule/segment', params=params, data=data)
 
@@ -4918,7 +5627,7 @@ class TwitchApi:
         params = exclude_non_empty(broadcaster_id=broadcaster_id, id=id_)
         return await self._request('DELETE', 'schedule/segment', params=params)
 
-    async def search_categories(self, *, query: str, first: int = _empty, after: str = _empty):
+    async def search_categories(self, *, after: str = _empty, first: int = _empty, query: str):
         """
         Returns a list of games or categories that match the query via name either entirely or partially.
 
@@ -4962,10 +5671,10 @@ class TwitchApi:
 
         Note: The return values are the same as returned from `GET https://api.twitch.tv/helix/games`
         """
-        params = exclude_non_empty(query=query, first=first, after=after)
+        params = exclude_non_empty(after=after, first=first, query=query)
         return await self._request('GET', 'search/categories', params=params)
 
-    async def search_channels(self, *, query: str, first: int = _empty, after: str = _empty, live_only: bool = _empty):
+    async def search_channels(self, *, after: str = _empty, first: int = _empty, live_only: bool = _empty, query: str):
         """
         Returns a list of channels (users who have streamed within the past 6 months) that match the query via channel
         name or description either entirely or partially. Results include both live and offline channels. Online
@@ -5029,8 +5738,209 @@ class TwitchApi:
         | `started_at`           | string   | UTC timestamp. Returns an empty string if the channel is not live.                                                                                                      |
         +------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(query=query, first=first, after=after, live_only=live_only)
+        params = exclude_non_empty(after=after, first=first, live_only=live_only, query=query)
         return await self._request('GET', 'search/channels', params=params)
+
+    async def get_soundtrack_current_track(self, *, broadcaster_id: str):
+        """
+        BETA Gets the Soundtrack track that the broadcaster is playing.
+
+        # Authorization:
+        Requires an App access token or User access token.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/soundtrack/current_track`
+
+        # Query Parameters:
+        +----------------+----------+--------+--------------------------------------------------------------+
+        | Parameter      | Required | Type   | Description                                                  |
+        +----------------+----------+--------+--------------------------------------------------------------+
+        | broadcaster_id | Yes      | String | The ID of the broadcaster that’s playing a Soundtrack track. |
+        +----------------+----------+--------+--------------------------------------------------------------+
+
+        # Response Body:
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | Field              | Type                     | Description                                                                                          |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | data               | SoundtrackCurrentTrack[] | A list that contains the Soundtrack track that the broadcaster is playing.                           |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | track              | SoundtrackTrack          | The track that’s currently playing.                                                                  |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | album              | SoundtrackAlbum          | The album that includes the track.                                                                   |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                   | The album’s ASIN (Amazon Standard Identification Number).                                            |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | image_url          | String                   | A URL to the album’s cover art.                                                                      |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | name               | String                   | The album’s name.                                                                                    |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | artist             | SoundtrackArtist         | The artists included on the track.                                                                   |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | creator_channel_id | String                   | The ID of the Twitch user that created the track. Is empty if a Twitch user didn’t create the track. |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                   | The artist’s ASIN (Amazon Standard Identification Number).                                           |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | name               | String                   | The artist’s name. This can be the band’s name or the solo artist’s name.                            |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | duration           | Integer                  | The duration of the track, in seconds.                                                               |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                   | The track’s ASIN (Amazon Standard Identification Number).                                            |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | title              | String                   | The track’s title.                                                                                   |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | source             | SoundtrackSource         | The source of the track that’s currently playing. For example, a playlist or station.                |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | content_type       | String                   | The type of content that `id` maps to. Possible values are:                                          |
+        |                    |                          | - PLAYLIST                                                                                           |
+        |                    |                          | - STATION                                                                                            |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                   | The playlist’s or station’s ASIN (Amazon Standard Identification Number).                            |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | image_url          | String                   | A URL to the playlist’s or station’s image art.                                                      |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | soundtrack_url     | String                   | A URL to the playlist on Soundtrack. The string is empty if `content-type` is STATION.               |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | spotify_url        | String                   | A URL to the playlist on Spotify. The string is empty if `content-type` is STATION.                  |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+        | title              | String                   | The playlist’s or station’s title.                                                                   |
+        +--------------------+--------------------------+------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-----------------------------------------+
+        | Code | Meaning                                 |
+        +------+-----------------------------------------+
+        | 200  | Success                                 |
+        +------+-----------------------------------------+
+        | 400  | Malformed request                       |
+        +------+-----------------------------------------+
+        | 401  | Unauthorized                            |
+        +------+-----------------------------------------+
+        | 404  | The broadcaster is not playing a track. |
+        +------+-----------------------------------------+
+        | 500  | Internal server error                   |
+        +------+-----------------------------------------+
+        """
+        params = exclude_non_empty(broadcaster_id=broadcaster_id)
+        return await self._request('GET', 'soundtrack/current_track', params=params)
+
+    async def get_soundtrack_playlist(self, *, id_: str):
+        """
+        BETA Gets a Soundtrack playlist, which includes its list of tracks.
+
+        # Authorization:
+        Requires an App access token or User access token.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/soundtrack/playlist`
+
+        # Query Parameters:
+        +-----------+----------+--------+-------------------------------------------+
+        | Parameter | Required | Type   | Description                               |
+        +-----------+----------+--------+-------------------------------------------+
+        | id        | Yes      | String | The ID of the Soundtrack playlist to get. |
+        +-----------+----------+--------+-------------------------------------------+
+
+        # Response Body:
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | Field              | Type                       | Description                                                                                          |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | data               | SoundtrackPlaylistTracks[] | A list that contains the single playlist you requested.                                              |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | description        | String                     | A short description about the music that the playlist includes.                                      |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                     | The playlist’s ASIN (Amazon Standard Identification Number).                                         |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | image_url          | String                     | A URL to the playlist’s image art. Is empty if the playlist doesn't include art.                     |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | title              | String                     | The playlist’s title.                                                                                |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | tracks             | SoundtrackTrack[]          | The list of tracks in the playlist.                                                                  |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | album              | SoundtrackAlbum            | The album that includes the track.                                                                   |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                     | The album’s ASIN (Amazon Standard Identification Number).                                            |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | image_url          | String                     | A URL to the album’s cover art.                                                                      |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | name               | String                     | The album’s name.                                                                                    |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | artist             | SoundtrackArtist           | The artists included on the track.                                                                   |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | creator_channel_id | String                     | The ID of the Twitch user that created the track. Is empty if a Twitch user didn’t create the track. |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                     | The artist’s ASIN (Amazon Standard Identification Number).                                           |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | name               | String                     | The artist’s name. This can be the band’s name or the solo artist’s name.                            |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | duration           | Integer                    | The duration of the track, in seconds.                                                               |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | id                 | String                     | The track’s ASIN (Amazon Standard Identification Number).                                            |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+        | title              | String                     | The track’s title.                                                                                   |
+        +--------------------+----------------------------+------------------------------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-----------------------+
+        | Code | Meaning               |
+        +------+-----------------------+
+        | 200  | Success               |
+        +------+-----------------------+
+        | 400  | Malformed request     |
+        +------+-----------------------+
+        | 401  | Unauthorized          |
+        +------+-----------------------+
+        | 404  | Not found             |
+        +------+-----------------------+
+        | 500  | Internal server error |
+        +------+-----------------------+
+        """
+        params = exclude_non_empty(id=id_)
+        return await self._request('GET', 'soundtrack/playlist', params=params)
+
+    async def get_soundtrack_playlists(self):
+        """
+        BETA Gets a list of Soundtrack playlists.
+
+        The list contains information about the playlists, such as their titles and descriptions. To get a playlist’s tracks, call Get Soundtrack Playlist, and specify the playlist’s `id`.
+
+        # Authorization:
+        Requires an App access token or User access token.
+
+        # URL:
+        `GET https://api.twitch.tv/helix/soundtrack/playlists`
+
+        # Query Parameters:
+        None
+
+        # Response Body:
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | Field       | Type                         | Description                                                                      |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | data        | SoundtrackPlaylistMetadata[] | The list of Soundtrack playlists.                                                |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | description | String                       | A short description about the music that the playlist includes.                  |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | id          | String                       | The playlist’s ASIN (Amazon Standard Identification Number).                     |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | image_url   | String                       | A URL to the playlist’s image art. Is empty if the playlist doesn't include art. |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+        | title       | String                       | The playlist’s title.                                                            |
+        +-------------+------------------------------+----------------------------------------------------------------------------------+
+
+        # Response Codes:
+        +------+-----------------------+
+        | Code | Meaning               |
+        +------+-----------------------+
+        | 200  | Success               |
+        +------+-----------------------+
+        | 401  | Unauthorized          |
+        +------+-----------------------+
+        | 404  | Not found             |
+        +------+-----------------------+
+        | 500  | Internal server error |
+        +------+-----------------------+
+        """
+        return await self._request('GET', 'soundtrack/playlists')
 
     async def get_stream_key(self, *, broadcaster_id: str):
         """
@@ -5167,7 +6077,7 @@ class TwitchApi:
         )
         return await self._request('GET', 'streams', params=params)
 
-    async def get_followed_streams(self, *, user_id: str, after: str = _empty, first: int = _empty):
+    async def get_followed_streams(self, *, after: str = _empty, first: int = _empty, user_id: str):
         """
         Gets information about active streams belonging to channels that the authenticated user follows. Streams are
         returned sorted by number of current viewers, in descending order. Across multiple pages of results, there may
@@ -5230,10 +6140,10 @@ class TwitchApi:
         | `viewer_count`  | int                        | Number of viewers watching the stream at the time of the query.                                                                                             |
         +-----------------+----------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(user_id=user_id, after=after, first=first)
+        params = exclude_non_empty(after=after, first=first, user_id=user_id)
         return await self._request('GET', 'streams/followed', params=params)
 
-    async def create_stream_marker(self, *, user_id: str, description: str = _empty):
+    async def create_stream_marker(self, *, description: str = _empty, user_id: str):
         """
         Creates a marker in the stream of a user specified by user ID. A marker is an arbitrary point in a stream that
         the broadcaster wants to mark; e.g., to easily return to later. The marker is created at the current timestamp
@@ -5291,11 +6201,11 @@ class TwitchApi:
         | `position_seconds` | integer | Relative offset (in seconds) of the marker, from the beginning of the stream. |
         +--------------------+---------+-------------------------------------------------------------------------------+
         """
-        data = exclude_non_empty(user_id=user_id, description=description)
+        data = exclude_non_empty(description=description, user_id=user_id)
         return await self._request('POST', 'streams/markers', data=data)
 
     async def get_stream_markers(
-        self, *, user_id: str, video_id: str, after: str = _empty, before: str = _empty, first: str = _empty
+        self, *, after: str = _empty, before: str = _empty, first: str = _empty, user_id: str, video_id: str
     ):
         """
         Gets a list of markers for either a specified user’s most recent stream or a specified VOD/video (stream),
@@ -5359,14 +6269,14 @@ class TwitchApi:
         | `video_id`         | string                     | ID of the stream (VOD/video) that was marked.                                                                                                            |
         +--------------------+----------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(user_id=user_id, video_id=video_id, after=after, before=before, first=first)
+        params = exclude_non_empty(after=after, before=before, first=first, user_id=user_id, video_id=video_id)
         return await self._request('GET', 'streams/markers', params=params)
 
     async def get_broadcaster_subscriptions(
-        self, *, broadcaster_id: str, user_id: str = _empty, after: str = _empty, first: str = _empty
+        self, *, after: str = _empty, broadcaster_id: str, first: str = _empty, user_id: str = _empty
     ):
         """
-        # Description: Get all of the subscriptions for a specific broadcaster.
+        Gets a list of users that subscribe to the specified broadcaster.
 
         # Authentication:
         - OAuth token required
@@ -5392,7 +6302,7 @@ class TwitchApi:
         +-----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | Parameter | Type   | Description                                                                                                                                                                                                                                                                                                                                    |
         +-----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `user_id` | string | Filters results to only include potential subscriptions made by the provided user IDs. Accepts up to 100 values.                                                                                                                                                                                                                               |
+        | `user_id` | string | Filters the list to include only the specified subscribers. To specify more than one subscriber, include this parameter for each subscriber. For example, &user_id=1234&user_id=5678. You may specify a maximum of 100 subscribers.                                                                                                            |
         +-----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         | `after`   | string | Cursor for forward pagination: tells the server where to start fetching the next set of results in a multi-page response. This applies only to queries without `user_id`. If a `user_id` is specified, it supersedes any cursor/offset combinations. The cursor value specified here is from the `pagination` response field of a prior query. |
         +-----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -5400,40 +6310,42 @@ class TwitchApi:
         +-----------+--------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
         # Return Values:
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Parameter           | Type                       | Description                                                                                                                                                |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_id`    | string                     | User ID of the broadcaster.                                                                                                                                |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_login` | string                     | Login of the broadcaster.                                                                                                                                  |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `broadcaster_name`  | string                     | Display name of the broadcaster.                                                                                                                           |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `gifter_id`         | string                     | If the subscription was gifted, this is the user ID of the gifter. Empty string otherwise.                                                                 |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `gifter_login`      | string                     | If the subscription was gifted, this is the login of the gifter. Empty string otherwise.                                                                   |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `gifter_name`       | string                     | If the subscription was gifted, this is the display name of the gifter. Empty string otherwise.                                                            |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `is_gift`           | Boolean                    | `true` if the subscription is a gift subscription.                                                                                                         |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `plan_name`         | string                     | Name of the subscription.                                                                                                                                  |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `tier`              | string                     | Type of subscription (Tier 1, Tier 2, Tier 3).                                                                                                             |
-        |                     |                            | 1000 = Tier 1, 2000 = Tier 2, 3000 = Tier 3 subscriptions.                                                                                                 |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `user_id`           | string                     | ID of the subscribed user.                                                                                                                                 |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `user_name`         | string                     | Display name of the subscribed user.                                                                                                                       |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `user_login`        | string                     | Login of the subscribed user.                                                                                                                              |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `pagination`        | object containing a string | A cursor value,  to be used in a subsequent request to specify the starting point  of the next set of results. If this is empty, you are at the last page. |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `total`             | integer                    | The number of Twitch users subscribed to the broadcaster.                                                                                                  |
-        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Parameter           | Type                       | Description                                                                                                                                                                                                                                                                                                                                                                                                |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `broadcaster_id`    | string                     | User ID of the broadcaster.                                                                                                                                                                                                                                                                                                                                                                                |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `broadcaster_login` | string                     | Login of the broadcaster.                                                                                                                                                                                                                                                                                                                                                                                  |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `broadcaster_name`  | string                     | Display name of the broadcaster.                                                                                                                                                                                                                                                                                                                                                                           |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `gifter_id`         | string                     | If the subscription was gifted, this is the user ID of the gifter. Empty string otherwise.                                                                                                                                                                                                                                                                                                                 |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `gifter_login`      | string                     | If the subscription was gifted, this is the login of the gifter. Empty string otherwise.                                                                                                                                                                                                                                                                                                                   |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `gifter_name`       | string                     | If the subscription was gifted, this is the display name of the gifter. Empty string otherwise.                                                                                                                                                                                                                                                                                                            |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `is_gift`           | Boolean                    | Is true if the subscription is a gift subscription.                                                                                                                                                                                                                                                                                                                                                        |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `plan_name`         | string                     | Name of the subscription.                                                                                                                                                                                                                                                                                                                                                                                  |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `tier`              | string                     | Type of subscription (Tier 1, Tier 2, Tier 3).                                                                                                                                                                                                                                                                                                                                                             |
+        |                     |                            | 1000 = Tier 1, 2000 = Tier 2, 3000 = Tier 3 subscriptions.                                                                                                                                                                                                                                                                                                                                                 |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `user_id`           | string                     | ID of the subscribed user.                                                                                                                                                                                                                                                                                                                                                                                 |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `user_name`         | string                     | Display name of the subscribed user.                                                                                                                                                                                                                                                                                                                                                                       |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `user_login`        | string                     | Login of the subscribed user.                                                                                                                                                                                                                                                                                                                                                                              |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `pagination`        | object containing a string | A cursor value,  to be used in a subsequent request to specify the starting point  of the next set of results. If this is empty, you are at the last page.                                                                                                                                                                                                                                                 |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `total`             | integer                    | The total number of users that subscribe to this broadcaster.                                                                                                                                                                                                                                                                                                                                              |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | `points`            | integer                    | The current number of subscriber points earned by this broadcaster. Points are based on the subscription tier of each user that subscribes to this broadcaster. For example, a Tier 1 subscription is worth 1 point, Tier 2 is worth 2 points, and Tier 3 is worth 6 points. The number of points determines the number of emote slots that are unlocked for the broadcaster (see Subscriber Emote Slots). |
+        +---------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, user_id=user_id, after=after, first=first)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first, user_id=user_id)
         return await self._request('GET', 'subscriptions', params=params)
 
     async def check_user_subscription(self, *, broadcaster_id: str, user_id: str):
@@ -5684,7 +6596,7 @@ class TwitchApi:
         params = exclude_non_empty(broadcaster_id=broadcaster_id)
         return await self._request('GET', 'teams/channel', params=params)
 
-    async def get_teams(self, *, name: str = _empty, id_: str = _empty):
+    async def get_teams(self, *, id_: str = _empty, name: str = _empty):
         """
         Gets information for a specific Twitch Team.
 
@@ -5748,7 +6660,7 @@ class TwitchApi:
         | 401  | Authorization failed.                   |
         +------+-----------------------------------------+
         """
-        params = exclude_non_empty(name=name, id=id_)
+        params = exclude_non_empty(id=id_, name=name)
         return await self._request('GET', 'teams', params=params)
 
     async def get_users(self, *, id_: Union[str, List[str]] = _empty, login: Union[str, List[str]] = _empty):
@@ -5913,7 +6825,7 @@ class TwitchApi:
         params = exclude_non_empty(after=after, first=first, from_id=from_id, to_id=to_id)
         return await self._request('GET', 'users/follows', params=params)
 
-    async def get_user_block_list(self, *, broadcaster_id: str, first: int = _empty, after: str = _empty):
+    async def get_user_block_list(self, *, after: str = _empty, broadcaster_id: str, first: int = _empty):
         """
         Gets a specified user’s block list. The list is sorted by when the block occurred in descending order (i.e. most
         recent block first).
@@ -5964,10 +6876,10 @@ class TwitchApi:
         | 401  | Authorization failed.                    |
         +------+------------------------------------------+
         """
-        params = exclude_non_empty(broadcaster_id=broadcaster_id, first=first, after=after)
+        params = exclude_non_empty(after=after, broadcaster_id=broadcaster_id, first=first)
         return await self._request('GET', 'users/blocks', params=params)
 
-    async def block_user(self, *, target_user_id: str, source_context: str = _empty, reason: str = _empty):
+    async def block_user(self, *, reason: str = _empty, source_context: str = _empty, target_user_id: str):
         """
         Blocks the specified user on behalf of the authenticated user.
 
@@ -6006,7 +6918,7 @@ class TwitchApi:
         | 401  | Authorization failed.      |
         +------+----------------------------+
         """
-        params = exclude_non_empty(target_user_id=target_user_id, source_context=source_context, reason=reason)
+        params = exclude_non_empty(reason=reason, source_context=source_context, target_user_id=target_user_id)
         return await self._request('PUT', 'users/blocks', params=params)
 
     async def unblock_user(self, *, target_user_id: str):
@@ -6158,16 +7070,16 @@ class TwitchApi:
     async def get_videos(
         self,
         *,
-        id_: Union[str, List[str]],
-        user_id: str,
-        game_id: str,
         after: str = _empty,
         before: str = _empty,
         first: str = _empty,
+        game_id: str,
+        id_: Union[str, List[str]],
         language: str = _empty,
         period: str = _empty,
         sort: str = _empty,
         type_: str = _empty,
+        user_id: str,
     ):
         """
         Gets video information by one or more video IDs, user ID, or game ID. For lookup by user or game, several
@@ -6262,16 +7174,16 @@ class TwitchApi:
         +--------------------+----------------------------+-----------------------------------------------------------------------------------------------------------------------------+
         """
         params = exclude_non_empty(
-            id=id_,
-            user_id=user_id,
-            game_id=game_id,
             after=after,
             before=before,
             first=first,
+            game_id=game_id,
+            id=id_,
             language=language,
             period=period,
             sort=sort,
             type=type_,
+            user_id=user_id,
         )
         return await self._request('GET', 'videos', params=params)
 
@@ -6312,45 +7224,3 @@ class TwitchApi:
         """
         params = exclude_non_empty(id=id_)
         return await self._request('DELETE', 'videos', params=params)
-
-    async def get_webhook_subscriptions(self, *, after: str = _empty, first: str = _empty):
-        """
-        Gets the Webhook subscriptions of an application identified by a Bearer token, in order of expiration.
-
-        The response has a JSON payload with a `data` field containing an array of subscription elements and a `pagination` field containing information required to query for more subscriptions.
-
-        # Authentication:
-        App access token
-
-        # URL:
-        `GET https://api.twitch.tv/helix/webhooks/subscriptions`
-
-        # Required Query Parameters:
-        None
-
-        # Optional Query Parameters:
-        +---------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Name    | Type   | Description                                                                                                                                                                                                          |
-        +---------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `after` | string | Cursor for forward pagination: tells the server where to start fetching the next set of results, in a multi-page response. The cursor value specified here is from the `pagination` response field of a prior query. |
-        +---------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `first` | string | Number of values to be returned per page. Limit: 100. Default: 20.                                                                                                                                                   |
-        +---------+--------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-        # Response Fields:
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | Field        | Type                       | Description                                                                                                                                                                  |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `callback`   | string                     | The callback provided for this subscription.                                                                                                                                 |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `expires_at` | string                     | Date and time when this subscription expires. Encoded as RFC3339. The timezone is always UTC (“Z”).                                                                          |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `pagination` | object containing a string | A cursor value, to be used in a subsequent request to specify the starting point of the next set of results. If this is empty, you are at the last page.                     |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `topic`      | string                     | The topic used in the initial subscription.                                                                                                                                  |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        | `total`      | int                        | A hint at the total number of results returned, on all pages. This is an approximation: as you page through the list, some subscriptions may expire and others may be added. |
-        +--------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-        """
-        params = exclude_non_empty(after=after, first=first)
-        return await self._request('GET', 'webhooks/subscriptions', params=params)

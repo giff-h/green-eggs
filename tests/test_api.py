@@ -145,7 +145,7 @@ async def test_get_cheermotes_exclude_empty(api: TwitchApi):
 async def test_get_extension_transactions(api: TwitchApi):
     result = await api.get_extension_transactions(extension_id='1', id_=['2', 'also'], after='3', first=4)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/extensions/transactions?extension_id=1&id=2&id=also&after=3&first=4', json=None
+        'GET', 'base/extensions/transactions?after=3&extension_id=1&first=4&id=2&id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -262,7 +262,7 @@ async def test_get_custom_reward(api: TwitchApi):
     result = await api.get_custom_reward(broadcaster_id='1', id_=['2', 'also'], only_manageable_rewards=True)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET',
-        'base/channel_points/custom_rewards?broadcaster_id=1&id=2&id=also&only_manageable_rewards=True',
+        'base/channel_points/custom_rewards?broadcaster_id=1&id=2&id=also&only_manageable_rewards=true',
         json=None,
     )
     assert result == dict(foo='bar')
@@ -285,7 +285,7 @@ async def test_get_custom_reward_redemption(api: TwitchApi):
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET',
         'base/channel_points/custom_rewards/redemptions'
-        '?broadcaster_id=1&reward_id=2&id=3&id=also&status=4&sort=5&after=6&first=7',
+        '?after=6&broadcaster_id=1&first=7&id=3&id=also&reward_id=2&sort=5&status=4',
         json=None,
     )
     assert result == dict(foo='bar')
@@ -357,7 +357,7 @@ async def test_update_redemption_status(api: TwitchApi):
     result = await api.update_redemption_status(id_=['1', 'also'], broadcaster_id='2', reward_id='3', status='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'PATCH',
-        'base/channel_points/custom_rewards/redemptions?id=1&id=also&broadcaster_id=2&reward_id=3',
+        'base/channel_points/custom_rewards/redemptions?broadcaster_id=2&id=1&id=also&reward_id=3',
         json={'status': '4'},
     )
     assert result == dict(foo='bar')
@@ -409,10 +409,70 @@ async def test_get_global_chat_badges(api: TwitchApi):
 
 
 @pytest.mark.asyncio
+async def test_get_chat_settings(api: TwitchApi):
+    result = await api.get_chat_settings(broadcaster_id='1', moderator_id='2')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/chat/settings?broadcaster_id=1&moderator_id=2', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_chat_settings_exclude_empty(api: TwitchApi):
+    result = await api.get_chat_settings(broadcaster_id='1')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/chat/settings?broadcaster_id=1', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_update_chat_settings(api: TwitchApi):
+    result = await api.update_chat_settings(
+        broadcaster_id='1',
+        moderator_id='2',
+        emote_mode=True,
+        follower_mode=False,
+        follower_mode_duration=3,
+        non_moderator_chat_delay=True,
+        non_moderator_chat_delay_duration=4,
+        slow_mode=False,
+        slow_mode_wait_time=5,
+        subscriber_mode=True,
+        unique_chat_mode=False,
+    )
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'PATCH',
+        'base/chat/settings?broadcaster_id=1&moderator_id=2',
+        json=dict(
+            emote_mode=True,
+            follower_mode=False,
+            follower_mode_duration=3,
+            non_moderator_chat_delay=True,
+            non_moderator_chat_delay_duration=4,
+            slow_mode=False,
+            slow_mode_wait_time=5,
+            subscriber_mode=True,
+            unique_chat_mode=False,
+        ),
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_update_chat_settings_exclude_empty(api: TwitchApi):
+    result = await api.update_chat_settings(broadcaster_id='1', moderator_id='2')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'PATCH', 'base/chat/settings?broadcaster_id=1&moderator_id=2', json=dict()
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
 async def test_create_clip(api: TwitchApi):
     result = await api.create_clip(broadcaster_id='1', has_delay=True)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'POST', 'base/clips?broadcaster_id=1&has_delay=True', json=None
+        'POST', 'base/clips?broadcaster_id=1&has_delay=true', json=None
     )
     assert result == dict(foo='bar')
 
@@ -433,7 +493,7 @@ async def test_get_clips(api: TwitchApi):
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET',
-        'base/clips?broadcaster_id=1&game_id=2&id=3&id=also&after=4&before=5&ended_at=6&first=7&started_at=8',
+        'base/clips?after=4&before=5&broadcaster_id=1&ended_at=6&first=7&game_id=2&id=3&id=also&started_at=8',
         json=None,
     )
     assert result == dict(foo='bar')
@@ -463,7 +523,7 @@ async def test_get_drops_entitlements(api: TwitchApi):
         id_='1', user_id='2', game_id='3', fulfillment_status='4', after='5', first=6
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/entitlements/drops?id=1&user_id=2&game_id=3&fulfillment_status=4&after=5&first=6', json=None
+        'GET', 'base/entitlements/drops?after=5&first=6&fulfillment_status=4&game_id=3&id=1&user_id=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -571,17 +631,17 @@ async def test_send_extension_pubsub_message(api: TwitchApi):
 
 
 @pytest.mark.asyncio
-async def test_get_live_channels(api: TwitchApi):
-    result = await api.get_live_channels(extension_id='1', first=2, after='3')
+async def test_get_extension_live_channels(api: TwitchApi):
+    result = await api.get_extension_live_channels(extension_id='1', first=2, after='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/extensions/live?extension_id=1&first=2&after=3', json=None
+        'GET', 'base/extensions/live?after=3&extension_id=1&first=2', json=None
     )
     assert result == dict(foo='bar')
 
 
 @pytest.mark.asyncio
-async def test_get_live_channels_exclude_empty(api: TwitchApi):
-    result = await api.get_live_channels(extension_id='1')
+async def test_get_extension_live_channels_exclude_empty(api: TwitchApi):
+    result = await api.get_extension_live_channels(extension_id='1')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET', 'base/extensions/live?extension_id=1', json=None
     )
@@ -668,7 +728,7 @@ async def test_get_released_extensions_exclude_empty(api: TwitchApi):
 async def test_get_extension_bits_products(api: TwitchApi):
     result = await api.get_extension_bits_products(should_include_all=True)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/bits/extensions?should_include_all=True', json=None
+        'GET', 'base/bits/extensions?should_include_all=true', json=None
     )
     assert result == dict(foo='bar')
 
@@ -683,18 +743,18 @@ async def test_get_extension_bits_products_exclude_empty(api: TwitchApi):
 @pytest.mark.asyncio
 async def test_update_extension_bits_product(api: TwitchApi):
     result = await api.update_extension_bits_product(
-        sku='1', cost=dict(key=2), display_name='3', in_development=True, expiration='5', is_broadcast=False
+        cost_amount=1, cost_type='2', display_name='3', expiration='4', in_development=True, is_broadcast=False, sku='5'
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'PUT',
         'base/bits/extensions',
         json={
-            'sku': '1',
-            'cost': {'key': 2},
+            'cost': {'amount': 1, 'type': '2'},
             'display_name': '3',
+            'expiration': '4',
             'in_development': True,
-            'expiration': '5',
             'is_broadcast': False,
+            'sku': '5',
         },
     )
     assert result == dict(foo='bar')
@@ -702,9 +762,9 @@ async def test_update_extension_bits_product(api: TwitchApi):
 
 @pytest.mark.asyncio
 async def test_update_extension_bits_product_exclude_empty(api: TwitchApi):
-    result = await api.update_extension_bits_product(sku='1', cost=dict(key=2), display_name='3')
+    result = await api.update_extension_bits_product(cost_amount=1, cost_type='2', display_name='3', sku='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'PUT', 'base/bits/extensions', json={'cost': {'key': 2}, 'display_name': '3', 'sku': '1'}
+        'PUT', 'base/bits/extensions', json={'cost': {'amount': 1, 'type': '2'}, 'display_name': '3', 'sku': '4'}
     )
     assert result == dict(foo='bar')
 
@@ -735,7 +795,7 @@ async def test_delete_eventsub_subscription(api: TwitchApi):
 async def test_get_eventsub_subscriptions(api: TwitchApi):
     result = await api.get_eventsub_subscriptions(status='1', type_='2', after='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/eventsub/subscriptions?status=1&type=2&after=3', json=None
+        'GET', 'base/eventsub/subscriptions?after=3&status=1&type=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -787,7 +847,7 @@ async def test_get_creator_goals(api: TwitchApi):
 async def test_get_hype_train_events(api: TwitchApi):
     result = await api.get_hype_train_events(broadcaster_id='1', first=2, id_='3', cursor='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/hypetrain/events?broadcaster_id=1&first=2&id=3&cursor=4', json=None
+        'GET', 'base/hypetrain/events?broadcaster_id=1&cursor=4&first=2&id=3', json=None
     )
     assert result == dict(foo='bar')
 
@@ -822,10 +882,61 @@ async def test_manage_held_automod_messages(api: TwitchApi):
 
 
 @pytest.mark.asyncio
+async def test_get_automod_settings(api: TwitchApi):
+    result = await api.get_automod_settings(broadcaster_id='1', moderator_id='2')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/moderation/automod/settings?broadcaster_id=1&moderator_id=2', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_update_automod_settings(api: TwitchApi):
+    result = await api.update_automod_settings(
+        broadcaster_id='1',
+        moderator_id='2',
+        aggression=3,
+        bullying=4,
+        disability=5,
+        misogyny=6,
+        overall_level=7,
+        race_ethnicity_or_religion=8,
+        sex_based_terms=9,
+        sexuality_sex_or_gender=10,
+        swearing=11,
+    )
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'PUT',
+        'base/moderation/automod/settings?broadcaster_id=1&moderator_id=2',
+        json=dict(
+            aggression=3,
+            bullying=4,
+            disability=5,
+            misogyny=6,
+            overall_level=7,
+            race_ethnicity_or_religion=8,
+            sex_based_terms=9,
+            sexuality_sex_or_gender=10,
+            swearing=11,
+        ),
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_update_automod_settings_exclude_empty(api: TwitchApi):
+    result = await api.update_automod_settings(broadcaster_id='1', moderator_id='2')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'PUT', 'base/moderation/automod/settings?broadcaster_id=1&moderator_id=2', json=dict()
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
 async def test_get_banned_events(api: TwitchApi):
     result = await api.get_banned_events(broadcaster_id='1', user_id=['2', 'also'], after='3', first='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/moderation/banned/events?broadcaster_id=1&user_id=2&user_id=also&after=3&first=4', json=None
+        'GET', 'base/moderation/banned/events?after=3&broadcaster_id=1&first=4&user_id=2&user_id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -843,7 +954,7 @@ async def test_get_banned_events_exclude_empty(api: TwitchApi):
 async def test_get_banned_users(api: TwitchApi):
     result = await api.get_banned_users(broadcaster_id='1', user_id=['2', 'also'], first='3', after='4', before='5')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/moderation/banned?broadcaster_id=1&user_id=2&user_id=also&first=3&after=4&before=5', json=None
+        'GET', 'base/moderation/banned?after=4&before=5&broadcaster_id=1&first=3&user_id=2&user_id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -858,10 +969,77 @@ async def test_get_banned_users_exclude_empty(api: TwitchApi):
 
 
 @pytest.mark.asyncio
+async def test_ban_user(api: TwitchApi):
+    result = await api.ban_user(broadcaster_id='1', moderator_id='2', duration=4, reason='5', user_id='6')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'POST',
+        'base/moderation/bans?broadcaster_id=1&moderator_id=2',
+        json=dict(data=dict(duration=4, reason='5', user_id='6')),
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_ban_user_exclude_empty(api: TwitchApi):
+    result = await api.ban_user(broadcaster_id='1', moderator_id='2', reason='4', user_id='5')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'POST',
+        'base/moderation/bans?broadcaster_id=1&moderator_id=2',
+        json=dict(data=dict(reason='4', user_id='5')),
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_unban_user(api: TwitchApi):
+    result = await api.unban_user(broadcaster_id='1', moderator_id='2', user_id='3')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'DELETE', 'base/moderation/bans?broadcaster_id=1&moderator_id=2&user_id=3', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_blocked_terms(api: TwitchApi):
+    result = await api.get_blocked_terms(broadcaster_id='1', moderator_id='2', after='3', first=4)
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/moderation/blocked_terms?after=3&broadcaster_id=1&first=4&moderator_id=2', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_blocked_terms_exclude_empty(api: TwitchApi):
+    result = await api.get_blocked_terms(broadcaster_id='1', moderator_id='2')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/moderation/blocked_terms?broadcaster_id=1&moderator_id=2', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_add_blocked_term(api: TwitchApi):
+    result = await api.add_blocked_term(broadcaster_id='1', moderator_id='2', text='3')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'POST', 'base/moderation/blocked_terms?broadcaster_id=1&moderator_id=2', json=dict(text='3')
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_remove_blocked_term(api: TwitchApi):
+    result = await api.remove_blocked_term(broadcaster_id='1', id_='2', moderator_id='3')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'DELETE', 'base/moderation/blocked_terms?broadcaster_id=1&id=2&moderator_id=3', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
 async def test_get_moderators(api: TwitchApi):
     result = await api.get_moderators(broadcaster_id='1', user_id=['2', 'also'], first='3', after='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/moderation/moderators?broadcaster_id=1&user_id=2&user_id=also&first=3&after=4', json=None
+        'GET', 'base/moderation/moderators?after=4&broadcaster_id=1&first=3&user_id=2&user_id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -879,7 +1057,7 @@ async def test_get_moderators_exclude_empty(api: TwitchApi):
 async def test_get_moderator_events(api: TwitchApi):
     result = await api.get_moderator_events(broadcaster_id='1', user_id=['2', 'also'], after='3', first='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/moderation/moderators/events?broadcaster_id=1&user_id=2&user_id=also&after=3&first=4', json=None
+        'GET', 'base/moderation/moderators/events?after=3&broadcaster_id=1&first=4&user_id=2&user_id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -897,7 +1075,7 @@ async def test_get_moderator_events_exclude_empty(api: TwitchApi):
 async def test_get_polls(api: TwitchApi):
     result = await api.get_polls(broadcaster_id='1', id_=['2', 'also'], after='3', first='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/polls?broadcaster_id=1&id=2&id=also&after=3&first=4', json=None
+        'GET', 'base/polls?after=3&broadcaster_id=1&first=4&id=2&id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -916,7 +1094,7 @@ async def test_create_poll(api: TwitchApi):
     result = await api.create_poll(
         broadcaster_id='1',
         title='2',
-        choices=[dict(foo=3), dict(bar='also')],
+        choice_title=['3', 'also'],
         duration=4,
         bits_voting_enabled=True,
         bits_per_vote=6,
@@ -929,7 +1107,7 @@ async def test_create_poll(api: TwitchApi):
         json={
             'broadcaster_id': '1',
             'title': '2',
-            'choices': [{'foo': 3}, {'bar': 'also'}],
+            'choices': [{'title': '3'}, {'title': 'also'}],
             'duration': 4,
             'bits_voting_enabled': True,
             'bits_per_vote': 6,
@@ -942,11 +1120,11 @@ async def test_create_poll(api: TwitchApi):
 
 @pytest.mark.asyncio
 async def test_create_poll_exclude_empty(api: TwitchApi):
-    result = await api.create_poll(broadcaster_id='1', title='2', choices=[dict(foo=3), dict(bar='also')], duration=4)
+    result = await api.create_poll(broadcaster_id='1', title='2', choice_title=['3', 'also'], duration=4)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'POST',
         'base/polls',
-        json={'broadcaster_id': '1', 'choices': [{'foo': 3}, {'bar': 'also'}], 'duration': 4, 'title': '2'},
+        json={'broadcaster_id': '1', 'choices': [{'title': '3'}, {'title': 'also'}], 'duration': 4, 'title': '2'},
     )
     assert result == dict(foo='bar')
 
@@ -964,7 +1142,7 @@ async def test_end_poll(api: TwitchApi):
 async def test_get_predictions(api: TwitchApi):
     result = await api.get_predictions(broadcaster_id='1', id_=['2', 'also'], after='3', first='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/predictions?broadcaster_id=1&id=2&id=also&after=3&first=4', json=None
+        'GET', 'base/predictions?after=3&broadcaster_id=1&first=4&id=2&id=also', json=None
     )
     assert result == dict(foo='bar')
 
@@ -981,12 +1159,17 @@ async def test_get_predictions_exclude_empty(api: TwitchApi):
 @pytest.mark.asyncio
 async def test_create_prediction(api: TwitchApi):
     result = await api.create_prediction(
-        broadcaster_id='1', title='2', outcomes=[dict(foo=3), dict(bar='also')], prediction_window=4
+        broadcaster_id='1', title='2', outcome_title=['3', 'also'], prediction_window=4
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'POST',
         'base/predictions',
-        json={'broadcaster_id': '1', 'outcomes': [{'foo': 3}, {'bar': 'also'}], 'prediction_window': 4, 'title': '2'},
+        json={
+            'broadcaster_id': '1',
+            'outcomes': [{'title': '3'}, {'title': 'also'}],
+            'prediction_window': 4,
+            'title': '2',
+        },
     )
     assert result == dict(foo='bar')
 
@@ -1015,7 +1198,7 @@ async def test_get_channel_stream_schedule(api: TwitchApi):
         broadcaster_id='1', id_=['2', 'also'], start_time='3', utc_offset='4', first=5, after='6'
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/schedule?broadcaster_id=1&id=2&id=also&start_time=3&utc_offset=4&first=5&after=6', json=None
+        'GET', 'base/schedule?after=6&broadcaster_id=1&first=5&id=2&id=also&start_time=3&utc_offset=4', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1046,7 +1229,7 @@ async def test_update_channel_stream_schedule(api: TwitchApi):
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'PATCH',
         'base/schedule/settings'
-        '?broadcaster_id=1&is_vacation_enabled=True&vacation_start_time=3&vacation_end_time=4&timezone=5',
+        '?broadcaster_id=1&is_vacation_enabled=true&timezone=5&vacation_end_time=4&vacation_start_time=3',
         json=None,
     )
     assert result == dict(foo='bar')
@@ -1143,7 +1326,7 @@ async def test_delete_channel_stream_schedule_segment(api: TwitchApi):
 async def test_search_categories(api: TwitchApi):
     result = await api.search_categories(query='1', first=2, after='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/search/categories?query=1&first=2&after=3', json=None
+        'GET', 'base/search/categories?after=3&first=2&query=1', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1161,7 +1344,7 @@ async def test_search_categories_exclude_empty(api: TwitchApi):
 async def test_search_channels(api: TwitchApi):
     result = await api.search_channels(query='1', first=2, after='3', live_only=True)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/search/channels?query=1&first=2&after=3&live_only=True', json=None
+        'GET', 'base/search/channels?after=3&first=2&live_only=true&query=1', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1171,6 +1354,33 @@ async def test_search_channels_exclude_empty(api: TwitchApi):
     result = await api.search_channels(query='1')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET', 'base/search/channels?query=1', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_soundtrack_current_track(api: TwitchApi):
+    result = await api.get_soundtrack_current_track(broadcaster_id='1')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/soundtrack/current_track?broadcaster_id=1', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_soundtrack_playlist(api: TwitchApi):
+    result = await api.get_soundtrack_playlist(id_='1')
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/soundtrack/playlist?id=1', json=None
+    )
+    assert result == dict(foo='bar')
+
+
+@pytest.mark.asyncio
+async def test_get_soundtrack_playlists(api: TwitchApi):
+    result = await api.get_soundtrack_playlists()
+    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/soundtrack/playlists', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1206,7 +1416,7 @@ async def test_get_streams_exclude_empty(api: TwitchApi):
 async def test_get_followed_streams(api: TwitchApi):
     result = await api.get_followed_streams(user_id='1', after='2', first=3)
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/streams/followed?user_id=1&after=2&first=3', json=None
+        'GET', 'base/streams/followed?after=2&first=3&user_id=1', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1242,7 +1452,7 @@ async def test_create_stream_marker_exclude_empty(api: TwitchApi):
 async def test_get_stream_markers(api: TwitchApi):
     result = await api.get_stream_markers(user_id='1', video_id='2', after='3', before='4', first='5')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/streams/markers?user_id=1&video_id=2&after=3&before=4&first=5', json=None
+        'GET', 'base/streams/markers?after=3&before=4&first=5&user_id=1&video_id=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1260,7 +1470,7 @@ async def test_get_stream_markers_exclude_empty(api: TwitchApi):
 async def test_get_broadcaster_subscriptions(api: TwitchApi):
     result = await api.get_broadcaster_subscriptions(broadcaster_id='1', user_id='2', after='3', first='4')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/subscriptions?broadcaster_id=1&user_id=2&after=3&first=4', json=None
+        'GET', 'base/subscriptions?after=3&broadcaster_id=1&first=4&user_id=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1339,7 +1549,7 @@ async def test_get_channel_teams(api: TwitchApi):
 async def test_get_teams(api: TwitchApi):
     result = await api.get_teams(name='1', id_='2')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/teams?name=1&id=2', json=None
+        'GET', 'base/teams?id=2&name=1', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1403,7 +1613,7 @@ async def test_get_users_follows_exclude_empty(api: TwitchApi):
 async def test_get_user_block_list(api: TwitchApi):
     result = await api.get_user_block_list(broadcaster_id='1', first=2, after='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/users/blocks?broadcaster_id=1&first=2&after=3', json=None
+        'GET', 'base/users/blocks?after=3&broadcaster_id=1&first=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1421,7 +1631,7 @@ async def test_get_user_block_list_exclude_empty(api: TwitchApi):
 async def test_block_user(api: TwitchApi):
     result = await api.block_user(target_user_id='1', source_context='2', reason='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'PUT', 'base/users/blocks?target_user_id=1&source_context=2&reason=3', json=None
+        'PUT', 'base/users/blocks?reason=3&source_context=2&target_user_id=1', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1496,7 +1706,7 @@ async def test_get_videos(api: TwitchApi):
     )
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET',
-        'base/videos?id=1&id=also&user_id=2&game_id=3&after=4&before=5&first=6&language=7&period=8&sort=9&type=10',
+        'base/videos?after=4&before=5&first=6&game_id=3&id=1&id=also&language=7&period=8&sort=9&type=10&user_id=2',
         json=None,
     )
     assert result == dict(foo='bar')
@@ -1506,7 +1716,7 @@ async def test_get_videos(api: TwitchApi):
 async def test_get_videos_exclude_empty(api: TwitchApi):
     result = await api.get_videos(id_=['1', 'also'], user_id='2', game_id='3')
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/videos?id=1&id=also&user_id=2&game_id=3', json=None
+        'GET', 'base/videos?game_id=3&id=1&id=also&user_id=2', json=None
     )
     assert result == dict(foo='bar')
 
@@ -1516,23 +1726,5 @@ async def test_delete_videos(api: TwitchApi):
     result = await api.delete_videos(id_=['1', 'also'])
     api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'DELETE', 'base/videos?id=1&id=also', json=None
-    )
-    assert result == dict(foo='bar')
-
-
-@pytest.mark.asyncio
-async def test_get_webhook_subscriptions(api: TwitchApi):
-    result = await api.get_webhook_subscriptions(after='1', first='2')
-    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/webhooks/subscriptions?after=1&first=2', json=None
-    )
-    assert result == dict(foo='bar')
-
-
-@pytest.mark.asyncio
-async def test_get_webhook_subscriptions_exclude_empty(api: TwitchApi):
-    result = await api.get_webhook_subscriptions()
-    api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-        'GET', 'base/webhooks/subscriptions', json=None
     )
     assert result == dict(foo='bar')

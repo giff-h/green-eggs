@@ -47,7 +47,9 @@ class TwitchApi:
         :return:
         """
         url = self._base_url + path
-        if params is not _empty and len(params):
+        if params is not _empty and params:
+            if isinstance(params, Mapping):
+                params = {k: str(v).lower() if isinstance(v, bool) else v for k, v in params.items()}
             url += f'?{urlencode(params, doseq=True)}'
 
         self._logger.debug(f'Making {method} request to {url}')
