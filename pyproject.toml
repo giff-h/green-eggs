@@ -36,11 +36,12 @@ ignore_missing_imports = true
 
 [tool.poetry]
 name = "green-eggs"
-version = "0.1.0"
+version = "0.1.1"
 description = "A framework to build a Twitch chatbot."
 license = "ISC"
 authors = ["Hameed Gifford <giff.h92@gmail.com>"]
 readme = "README.md"
+include = ["CHANGELOG.md"]
 repository = "https://github.com/hamstap85/green-eggs/"
 keywords = ["Twitch", "chatbot", "async"]
 classifiers = [
