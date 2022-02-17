@@ -2,6 +2,9 @@
   "branchTopic": "{{{depNameSanitized}}}-{{{newVersion}}}",
   "commitMessageExtra": "from {{{currentVersion}}} to {{{newVersion}}}",
   "commitMessageTopic": "{{depName}}",
+  "constraints": {
+    "python": "3.7"
+  },
   "dependencyDashboard": true,
   "extends": [":ignoreModulesAndTests"],
   "labels": ["auto dependency"],
