@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import collections
-import contextlib
 import json
 from pathlib import Path
 import pprint
@@ -9,7 +8,7 @@ from typing import Dict, Set, Type, Union
 
 import aiologger
 
-from green_eggs.api import TwitchApi
+from green_eggs.api import TwitchApiDirect
 from green_eggs.client import TwitchChatClient
 from green_eggs.data_types import BaseTags, HandleAble, HasTags, UserNoticeTags, patterns
 
@@ -32,21 +31,15 @@ def record_unhandled(data_type: Union[HandleAble, BaseTags]):
         record_unhandled(data_type.msg_params)
 
 
-@contextlib.asynccontextmanager
-async def client(logger: aiologger.Logger):
-    async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
-        yield chat
-
-
 async def stress():
     logger = aiologger.Logger.with_default_handlers(name='stress')
 
-    async with TwitchApi(client_id=client_id, token=token, logger=logger) as api:
+    async with TwitchApiDirect(client_id=client_id, token=token, logger=logger) as api:
         streams = await api.get_streams(first=10)
 
     logins = [stream['user_login'] for stream in streams['data']]
 
-    async with client(logger) as chat:
+    async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
         for login in logins:
             await chat.join(login)
 

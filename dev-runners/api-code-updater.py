@@ -473,4 +473,4 @@ if __name__ == '__main__':
     full_file = template + '\n'.join(generated_lines) + '\n'
     for misspelled, corrected in spelling_fixes.items():
         full_file = full_file.replace(misspelled, corrected)
-    (this_dir.parent / 'green_eggs' / 'api.py').write_text(full_file)
+    (this_dir.parent / 'green_eggs' / 'api' / 'direct.py').write_text(full_file)

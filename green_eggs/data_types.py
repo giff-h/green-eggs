@@ -576,7 +576,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         """
         Is this message sent by the given user.
 
-        Checks display name and login case insensitive.
+        Checks display name and login case-insensitive.
 
         :param user: The display or login name of the user
         :return: True if the user sent the message

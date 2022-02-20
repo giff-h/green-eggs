@@ -6,7 +6,7 @@ from typing import List, Mapping, Optional
 from aiologger import Logger
 
 from green_eggs import data_types as dt
-from green_eggs.api import TwitchApi
+from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.client import TwitchChatClient
 from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
@@ -16,7 +16,7 @@ from green_eggs.utils import catch_all
 
 async def _main_handler(
     *,
-    api: TwitchApi,
+    api: TwitchApiCommon,
     channel: Channel,
     commands: CommandRegistry,
     logger: Logger,
@@ -125,39 +125,37 @@ class ChatBot:
         trigger = FirstWordTrigger(invoke, case_sensitive) & SenderIsModTrigger()
 
         def factory(callback: RegisterAbleFunc, callback_keywords: List[str]) -> RegisterAbleFunc:
-            async def command(api: TwitchApi, channel: Channel, message: dt.PrivMsg) -> Optional[str]:
+            async def command(api: TwitchApiCommon, channel: Channel, message: dt.PrivMsg) -> Optional[str]:
                 if len(message.words) <= 1:
-                    return 'I need a name for that'
+                    return 'No name was given'
 
                 callback_kwargs = dict()
-                name = message.words[1]
+                name = message.words[1].lstrip('@')
                 last_message = channel.user_latest_message(name)
                 if last_message is None:
-                    user_result = await api.get_users(login=name.lstrip('@'))
-                    if not len(user_result['data']):
-                        return f'Could not find user data for {name}'
-
-                    user = user_result['data'][0]
-                    user_id = user['id']
-                    user_display = user['display_name']
-                    user_login = user['login']
+                    shoutout_info = await api.get_shoutout_info(username=name)
                 else:
-                    user_id = last_message.tags.user_id
-                    user_display = last_message.tags.display_name
-                    user_login = last_message.who
+                    shoutout_info = await api.get_shoutout_info(user_id=last_message.tags.user_id)
 
-                streams = await api.get_channel_information(broadcaster_id=user_id)
-                stream = streams['data'][0]
+                if shoutout_info is None:
+                    return f'Could not find data for {name}'
 
-                if 'name' in callback_keywords:
-                    callback_kwargs['name'] = user_display
-                if 'link' in callback_keywords:
-                    callback_kwargs['link'] = 'https://twitch.tv/' + user_login
-                if 'game' in callback_keywords:
-                    game = stream['game_name']
-                    callback_kwargs['game'] = None if game == '' else game
-                if 'api_result' in callback_keywords:
-                    callback_kwargs['api_result'] = stream
+                if 'user_id' in callback_keywords:
+                    callback_kwargs['user_id'] = shoutout_info.user_id
+                if 'username' in callback_keywords:
+                    callback_kwargs['username'] = shoutout_info.username
+                if 'display_name' in callback_keywords:
+                    callback_kwargs['display_name'] = shoutout_info.display_name
+                if 'game_name' in callback_keywords:
+                    callback_kwargs['game_name'] = shoutout_info.game_name
+                if 'game_id' in callback_keywords:
+                    callback_kwargs['game_id'] = shoutout_info.game_id
+                if 'broadcaster_language' in callback_keywords:
+                    callback_kwargs['broadcaster_language'] = shoutout_info.broadcaster_language
+                if 'stream_title' in callback_keywords:
+                    callback_kwargs['stream_title'] = shoutout_info.stream_title
+                if 'user_link' in callback_keywords:
+                    callback_kwargs['user_link'] = shoutout_info.user_link
 
                 output = callback(**callback_kwargs)
                 if output is None or isinstance(output, str):
@@ -168,7 +166,18 @@ class ChatBot:
             return command
 
         return self._commands.decorator(
-            trigger, target_keywords=['name', 'link', 'game', 'api_result'], command_factory=factory
+            trigger,
+            target_keywords=[
+                'user_id',
+                'username',
+                'display_name',
+                'game_name',
+                'game_id',
+                'broadcaster_language',
+                'stream_title',
+                'user_link',
+            ],
+            command_factory=factory,
         )
 
     def register_command(self, invoke: str, *, case_sensitive=False):
@@ -213,7 +222,7 @@ class ChatBot:
         logger = Logger.with_default_handlers(name='green_eggs')
 
         async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
-            async with TwitchApi(client_id=client_id, token=token, logger=logger) as api:
+            async with TwitchApiCommon(client_id=client_id, token=token, logger=logger) as api:
                 await chat.join(self._channel)
                 channel = Channel(login=self._channel, api=api, chat=chat, logger=logger)
 

@@ -1,7 +1,7 @@
 from logging import Logger
 from typing import Optional
 
-from green_eggs.api import TwitchApi as TwitchApi
+from green_eggs.api import TwitchApiCommon as TwitchApiCommon
 from green_eggs.client import TwitchChatClient as TwitchChatClient
 from green_eggs.data_types import Code353 as Code353
 from green_eggs.data_types import JoinPart as JoinPart
@@ -9,7 +9,7 @@ from green_eggs.data_types import PrivMsg as PrivMsg
 from green_eggs.data_types import RoomState as RoomState
 
 class Channel:
-    def __init__(self, login: str, api: TwitchApi, chat: TwitchChatClient, logger: Logger): ...
+    def __init__(self, login: str, api: TwitchApiCommon, chat: TwitchChatClient, logger: Logger): ...
     @property
     def broadcaster_id(self) -> str: ...
     def handle_code_353(self, code353: Code353): ...

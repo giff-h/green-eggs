@@ -4,11 +4,10 @@ import json
 from pathlib import Path
 import sys
 
-import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs import data_types as dt
-from green_eggs.api import TwitchApi
+from green_eggs.api import TwitchApiCommon
 
 # noinspection PyProtectedMember
 from green_eggs.bot import ChatBot, _main_handler
@@ -21,21 +20,24 @@ from tests.utils.data_types import priv_msg
 raw_data = json.loads((Path(__file__).resolve().parent / 'utils' / 'raw_data.json').read_text())
 
 
-@pytest.mark.asyncio
-async def test_main_loop_not_handled(api: TwitchApi, channel: Channel):
+async def test_main_loop_not_handled(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api, channel=channel, commands=registry, logger=logger, raw='', default_timestamp=datetime.datetime.utcnow()
+        api=api_common,
+        channel=channel,
+        commands=registry,
+        logger=logger,
+        raw='',
+        default_timestamp=datetime.datetime.utcnow(),
     )
     assert result is None
 
 
-@pytest.mark.asyncio
-async def test_main_loop_message(api: TwitchApi, channel: Channel):
+async def test_main_loop_message(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     registry.add(FirstWordTrigger('any'), lambda: 'result message')
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -47,11 +49,10 @@ async def test_main_loop_message(api: TwitchApi, channel: Channel):
     assert sent == 'PRIVMSG #channel_user :result message'
 
 
-@pytest.mark.asyncio
-async def test_main_loop_join_part(api: TwitchApi, channel: Channel):
+async def test_main_loop_join_part(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -61,11 +62,10 @@ async def test_main_loop_join_part(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.JoinPart), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_clear_chat(api: TwitchApi, channel: Channel):
+async def test_main_loop_clear_chat(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -75,8 +75,7 @@ async def test_main_loop_clear_chat(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.ClearChat), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_user_notice(api: TwitchApi, channel: Channel):
+async def test_main_loop_user_notice(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     raw = (
         '@badge-info=;badges=;color=#0000FF;display-name=User2;emotes=;flags=;id=d029028b-6061-414c-8a80-ddc296fe92fd;'
@@ -85,7 +84,7 @@ async def test_main_loop_user_notice(api: TwitchApi, channel: Channel):
         'user-type=;unhandled-tag=hello :tmi.twitch.tv USERNOTICE #channel_user'
     )
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -95,11 +94,10 @@ async def test_main_loop_user_notice(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.UserNotice), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_room_state(api: TwitchApi, channel: Channel):
+async def test_main_loop_room_state(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -109,11 +107,10 @@ async def test_main_loop_room_state(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.RoomState), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_user_state(api: TwitchApi, channel: Channel):
+async def test_main_loop_user_state(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -123,15 +120,14 @@ async def test_main_loop_user_state(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.UserState), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_clear_msg(api: TwitchApi, channel: Channel):
+async def test_main_loop_clear_msg(api_common: TwitchApiCommon, channel: Channel):
     raw = (
         '@login=user1;target-msg-id=57ee3aef-209e-4ca4-a010-a4ddf9e4a536;tmi-sent-ts=1630898681696 '
         ':tmi.twitch.tv CLEARMSG #channel_user :deleted'
     )
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -141,11 +137,10 @@ async def test_main_loop_clear_msg(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.ClearMsg), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_notice(api: TwitchApi, channel: Channel):
+async def test_main_loop_notice(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -155,11 +150,10 @@ async def test_main_loop_notice(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.Notice), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_host_target(api: TwitchApi, channel: Channel):
+async def test_main_loop_host_target(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -169,11 +163,10 @@ async def test_main_loop_host_target(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.HostTarget), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_353(api: TwitchApi, channel: Channel):
+async def test_main_loop_353(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -183,11 +176,10 @@ async def test_main_loop_353(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.Code353), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_366(api: TwitchApi, channel: Channel):
+async def test_main_loop_366(api_common: TwitchApiCommon, channel: Channel):
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -197,15 +189,14 @@ async def test_main_loop_366(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.Code366), type(result)
 
 
-@pytest.mark.asyncio
-async def test_main_loop_whisper(api: TwitchApi, channel: Channel):
+async def test_main_loop_whisper(api_common: TwitchApiCommon, channel: Channel):
     raw = (
         '@badges=;color=#ABCDEF;display-name=User1;emotes=;message-id=1;thread-id=2;user-id=3 '
         ':user1!user1@user1.tmi.twitch.tv WHISPER #channel_user :psst'
     )
     registry = CommandRegistry()
     result = await _main_handler(
-        api=api,
+        api=api_common,
         channel=channel,
         commands=registry,
         logger=logger,
@@ -215,35 +206,38 @@ async def test_main_loop_whisper(api: TwitchApi, channel: Channel):
     assert isinstance(result, dt.Whisper), type(result)
 
 
-@pytest.mark.asyncio
-async def test_register_basic(api: TwitchApi, channel: Channel):
+async def test_register_basic(api_common: TwitchApiCommon, channel: Channel):
     bot = ChatBot(channel='channel_user')
     bot.register_basic_commands({'!command': 'Response message'})
     trigger = FirstWordTrigger('!command')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!command')))
+    result = await runner.run(
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!command'))
+    )
     assert result == 'Response message'
 
 
-@pytest.mark.asyncio
-async def test_register_basic_many(api: TwitchApi, channel: Channel):
+async def test_register_basic_many(api_common: TwitchApiCommon, channel: Channel):
     bot = ChatBot(channel='channel_user')
     bot.register_basic_commands({'!one': 'Response One', '!two': 'Second Response'})
     trigger = FirstWordTrigger('!one')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!one')))
+    result = await runner.run(
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!one'))
+    )
     assert result == 'Response One'
     trigger = FirstWordTrigger('!two')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!two')))
+    result = await runner.run(
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!two'))
+    )
     assert result == 'Second Response'
 
 
-@pytest.mark.asyncio
-async def test_register_caster_with_no_name(api: TwitchApi, channel: Channel):
+async def test_register_caster_with_no_name(api_common: TwitchApiCommon, channel: Channel):
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!caster')
@@ -253,12 +247,13 @@ async def test_register_caster_with_no_name(api: TwitchApi, channel: Channel):
     trigger = FirstWordTrigger('!caster') & SenderIsModTrigger()
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!caster')))
-    assert result == 'I need a name for that'
+    result = await runner.run(
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!caster'))
+    )
+    assert result == 'No name was given'
 
 
-@pytest.mark.asyncio
-async def test_register_caster_with_prior_message(api: TwitchApi, channel: Channel, mocker: MockerFixture):
+async def test_register_caster_with_prior_message(api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture):
     channel.handle_message(
         priv_msg(
             handle_able_kwargs=dict(where='channel_user', who='streamer'), tags_kwargs=dict(display_name='Streamer')
@@ -266,69 +261,114 @@ async def test_register_caster_with_prior_message(api: TwitchApi, channel: Chann
     )
 
     async def get_channel_information():
-        return dict(data=[dict(game_name='The Best Game Ever')])
+        return dict(
+            data=[
+                dict(
+                    broadcaster_id='1234',
+                    broadcaster_login='streamer',
+                    broadcaster_name='Streamer',
+                    game_name='The Best Game Ever',
+                    game_id='5678',
+                    broadcaster_language='en',
+                    title='My Stream',
+                )
+            ]
+        )
 
     if sys.version_info[:2] == (3, 7):
-        mocker.patch('green_eggs.api.TwitchApi.get_channel_information', return_value=get_channel_information())
+        mocker.patch(
+            'green_eggs.api.direct.TwitchApiDirect.get_channel_information', return_value=get_channel_information()
+        )
     else:
-        mocker.patch('green_eggs.api.TwitchApi.get_channel_information', return_value=await get_channel_information())
+        mocker.patch(
+            'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
+            return_value=await get_channel_information(),
+        )
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!so')
-    def _caster(name, link, game):
-        return f'User {name} was playing {game} at {link}'
+    def _caster(display_name, user_link, game_name):
+        return f'User {display_name} was playing {game_name} at {user_link}'
 
     trigger = FirstWordTrigger('!so') & SenderIsModTrigger()
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!so streamer'))
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!so streamer'))
     )
     assert result == 'User Streamer was playing The Best Game Ever at https://twitch.tv/streamer'
-    api.get_channel_information.assert_called_once_with(broadcaster_id='1')  # type: ignore[attr-defined]
+    api_common.direct.get_channel_information.assert_called_once_with(broadcaster_id='1')  # type: ignore[attr-defined]
 
 
-@pytest.mark.asyncio
-async def test_register_caster_without_prior_message(api: TwitchApi, channel: Channel, mocker: MockerFixture):
+async def test_register_caster_without_prior_message(
+    api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture
+):
     async def get_users():
-        return dict(data=[dict(id='123', display_name='Other_Streamer', login='other_streamer')])
+        return dict(data=[dict(id='135')])
 
     async def get_channel_information():
-        return dict(data=[dict(game_name='The Next Best Game Ever')])
+        return dict(
+            data=[
+                dict(
+                    broadcaster_id='135',
+                    broadcaster_login='other_streamer',
+                    broadcaster_name='Other_Streamer',
+                    game_name='The Other Best Game Ever',
+                    game_id='579',
+                    broadcaster_language='en',
+                    title='My Other Stream',
+                )
+            ]
+        )
 
     if sys.version_info[:2] == (3, 7):
-        mocker.patch('green_eggs.api.TwitchApi.get_users', return_value=get_users())
-        mocker.patch('green_eggs.api.TwitchApi.get_channel_information', return_value=get_channel_information())
+        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=get_users())
+        mocker.patch(
+            'green_eggs.api.direct.TwitchApiDirect.get_channel_information', return_value=get_channel_information()
+        )
     else:
-        mocker.patch('green_eggs.api.TwitchApi.get_users', return_value=await get_users())
-        mocker.patch('green_eggs.api.TwitchApi.get_channel_information', return_value=await get_channel_information())
+        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=await get_users())
+        mocker.patch(
+            'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
+            return_value=await get_channel_information(),
+        )
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!shoutout')
-    async def _caster(name, link, game, api_result):
-        assert api_result == dict(game_name='The Next Best Game Ever')
-        return f'User {name} was found playing {game} at {link}'
+    async def _caster(
+        user_id, username, display_name, game_name, game_id, broadcaster_language, stream_title, user_link
+    ):
+        assert user_id == '135'
+        assert username == 'other_streamer'
+        assert game_id == '579'
+        assert broadcaster_language == 'en'
+        assert stream_title == 'My Other Stream'
+        return f'User {display_name} was found playing {game_name} at {user_link}'
 
     trigger = FirstWordTrigger('!shoutout') & SenderIsModTrigger()
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!shoutout Other_Streamer'))
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!shoutout @Other_Streamer'))
     )
-    assert result == 'User Other_Streamer was found playing The Next Best Game Ever at https://twitch.tv/other_streamer'
-    api.get_users.assert_called_once_with(login='Other_Streamer')  # type: ignore[attr-defined]
-    api.get_channel_information.assert_called_once_with(broadcaster_id='123')  # type: ignore[attr-defined]
+    assert (
+        result == 'User Other_Streamer was found playing The Other Best Game Ever at '
+        'https://twitch.tv/other_streamer'
+    )
+    api_common.direct.get_users.assert_called_once_with(login='Other_Streamer')  # type: ignore[attr-defined]
+    api_common.direct.get_channel_information.assert_called_once_with(  # type: ignore[attr-defined]
+        broadcaster_id='135'
+    )
 
 
-@pytest.mark.asyncio
-async def test_register_caster_no_user_found(api: TwitchApi, channel: Channel, mocker: MockerFixture):
+async def test_register_caster_no_user_found(api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture):
     async def get_users():
         return dict(data=[])
 
     if sys.version_info[:2] == (3, 7):
-        mocker.patch('green_eggs.api.TwitchApi.get_users', return_value=get_users())
+        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=get_users())
     else:
-        mocker.patch('green_eggs.api.TwitchApi.get_users', return_value=await get_users())
+        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=await get_users())
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!nope')
@@ -339,13 +379,12 @@ async def test_register_caster_no_user_found(api: TwitchApi, channel: Channel, m
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!nope whoever'))
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!nope whoever'))
     )
-    assert result == 'Could not find user data for whoever'
+    assert result == 'Could not find data for whoever'
 
 
-@pytest.mark.asyncio
-async def test_register_command(api: TwitchApi, channel: Channel):
+async def test_register_command(api_common: TwitchApiCommon, channel: Channel):
     bot = ChatBot(channel='channel_user')
 
     @bot.register_command('!hello')
@@ -355,5 +394,7 @@ async def test_register_command(api: TwitchApi, channel: Channel):
     trigger = FirstWordTrigger('!hello')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(api=api, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!hello')))
+    result = await runner.run(
+        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!hello'))
+    )
     assert result == 'World'

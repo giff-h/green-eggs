@@ -3,8 +3,6 @@ import inspect
 import sys
 from typing import List
 
-import pytest
-
 from green_eggs.channel import Channel
 from green_eggs.commands import (
     AndTrigger,
@@ -41,54 +39,46 @@ def test_trigger_inequality():
     assert FirstWordTrigger('one') | SenderIsModTrigger() != FirstWordTrigger('two') | SenderIsModTrigger()
 
 
-@pytest.mark.asyncio
 async def test_first_word_trigger(channel: Channel):
     trigger = FirstWordTrigger('one')
     message = priv_msg(handle_able_kwargs=dict(message='one two'))
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
-async def test_first_word_case_sensitive(channel: Channel):
+async def test_first_word_trigger_case_sensitive(channel: Channel):
     trigger = FirstWordTrigger('One', case_sensitive=True)
     message = priv_msg(handle_able_kwargs=dict(message='one two'))
     assert not await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
-async def test_first_word_case_insensitive(channel: Channel):
+async def test_first_word_trigger_case_insensitive(channel: Channel):
     trigger = FirstWordTrigger('One', case_sensitive=False)
     message = priv_msg(handle_able_kwargs=dict(message='one two'))
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_mod_trigger(channel: Channel):
     trigger = SenderIsModTrigger()
     message = priv_msg(tags_kwargs=dict(mod=True))
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_mod_trigger_hash():
     assert hash(SenderIsModTrigger()) == hash(SenderIsModTrigger())
 
 
-@pytest.mark.asyncio
 async def test_mod_trigger_broadcaster(channel: Channel):
     trigger = SenderIsModTrigger()
     message = priv_msg(tags_kwargs=dict(badges=dict(broadcaster=1)))
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_mod_trigger_normal(channel: Channel):
     trigger = SenderIsModTrigger()
     message = priv_msg()
     assert not await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_sub_trigger(channel: Channel):
     trigger = SenderIsSubscribedTrigger()
     message = priv_msg(handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(badges=dict(subscriber='1')))
@@ -96,12 +86,10 @@ async def test_sub_trigger(channel: Channel):
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_sub_trigger_hash():
     assert hash(SenderIsSubscribedTrigger()) == hash(SenderIsSubscribedTrigger())
 
 
-@pytest.mark.asyncio
 async def test_and_trigger_empty(channel: Channel):
     trigger = AndTrigger()
     assert not await trigger.check(priv_msg(), channel)
@@ -140,14 +128,12 @@ def test_and_trigger_nested():
     assert external._triggers == sorted((not_and, one, two, three_or_four), key=hash)
 
 
-@pytest.mark.asyncio
 async def test_and_trigger_check(channel: Channel):
     trigger = FirstWordTrigger('a') & SenderIsModTrigger()
     message = priv_msg(handle_able_kwargs=dict(message='a'), tags_kwargs=dict(mod=True))
     assert await trigger.check(message, channel)
 
 
-@pytest.mark.asyncio
 async def test_or_trigger_empty(channel: Channel):
     trigger = OrTrigger()
     assert not await trigger.check(priv_msg(), channel)
@@ -186,7 +172,6 @@ def test_or_trigger_nested():
     assert external._triggers == sorted((not_or, one, two, three_and_four), key=hash)
 
 
-@pytest.mark.asyncio
 async def test_or_trigger_check(channel: Channel):
     trigger = FirstWordTrigger('a') | SenderIsModTrigger()
     assert await trigger.check(priv_msg(handle_able_kwargs=dict(message='a')), channel)
@@ -218,7 +203,6 @@ def test_registry():
         assert False, c
 
 
-@pytest.mark.asyncio
 async def test_registry_all(channel: Channel):
     async def _command_one():
         return ''
@@ -237,7 +221,6 @@ async def test_registry_all(channel: Channel):
     assert [r._command_func for r in commands] == [_command_one, _command_three]
 
 
-@pytest.mark.asyncio
 async def test_registry_all_empty(channel: Channel):
     registry = CommandRegistry()
     commands = await registry.all(priv_msg(), channel)
@@ -317,7 +300,6 @@ if sys.version_info[:2] >= (3, 8):
             assert False, result
 
 
-@pytest.mark.asyncio
 async def test_registry_decorator_with_factory():
     def factory(callback: RegisterAbleFunc, callback_accepts: List[str]) -> RegisterAbleFunc:
         assert callback_accepts == ['one']
@@ -341,7 +323,6 @@ async def test_registry_decorator_with_factory():
     assert run_result == '12'
 
 
-@pytest.mark.asyncio
 async def test_registry_decorator_async_with_factory():
     def factory(callback: RegisterAbleFunc, callback_accepts: List[str]) -> RegisterAbleFunc:
         assert callback_accepts == ['one']
@@ -365,7 +346,6 @@ async def test_registry_decorator_async_with_factory():
     assert run_result == '12'
 
 
-@pytest.mark.asyncio
 async def test_registry_find(channel: Channel):
     def _one():
         return ''
@@ -385,7 +365,6 @@ async def test_registry_find(channel: Channel):
     assert command._command_func is _one
 
 
-@pytest.mark.asyncio
 async def test_registry_find_empty(channel: Channel):
     registry = CommandRegistry()
     commands = await registry.find(priv_msg(), channel)

@@ -1,6 +1,14 @@
 Release History
 ===============
 
+Soon™️
+-----
+
+- Added a class for first class access to common API usage
+  - An instance of this is now passed to decorated function commands instead of the original raw API class. No
+    deprecation warning was given because this is still in pre-release state and is subject to change without notice
+- Changed the names of the possible kwargs of decorated caster commands and added more
+
 0.1.1 (2022-02-15)
 ------------------
 

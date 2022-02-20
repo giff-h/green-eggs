@@ -8,8 +8,6 @@ from typing import Dict, List
 import nox
 import nox_poetry
 
-OLDEST_MINOR_VERSION = 6
-
 _friendly_name_mapping: Dict[str, str] = dict()
 
 
@@ -50,23 +48,32 @@ def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_mino
     return paths
 
 
-def _run_tests(session: nox_poetry.Session, with_coverage=True):
+def _run_tests(session: nox_poetry.Session, with_coverage=True, do_cov_append=False):
     session.install('pytest-asyncio', 'pytest-cov', 'pytest-mock', '.')
-    test_args = ['--cov-report=html', '--cov-append', '--cov=green_eggs'] if with_coverage else []
-    session.run('pytest', *test_args, 'tests')
+
+    extra_args = []
+    if with_coverage:
+        extra_args.append('--cov=green_eggs')
+        extra_args.append('--cov-report=html')
+        if do_cov_append:
+            extra_args.append('--cov-append')
+
+    session.run('pytest', *extra_args, 'tests')
 
 
 @nox_poetry.session(python=_get_latest_patch_of_minor_versions(oldest_minor=7, latest_minor=10))
 def tests_pyenv(session: nox_poetry.Session):
     """
-    Runs pytest with coverage on the latest patch of each available pyenv minor python version at least 3.7.
+    Runs pytest with coverage on the latest available patch of each pyenv python version between 3.7 and 3.10.
     """
-    _run_tests(session)
+    first_python_name = f'tests_pyenv-{tests_pyenv.python[0]}'  # type: ignore[attr-defined]
+    is_first_run = _friendly_name_mapping.get(first_python_name) == session.name
+    _run_tests(session, do_cov_append=not is_first_run)
 
 
 @nox_poetry.session()
 def tests_whichever(session: nox_poetry.Session):
     """
-    Runs pytest with coverage on the first python version that nox finds.
+    Runs pytest with coverage on the python that ran nox.
     """
     _run_tests(session)

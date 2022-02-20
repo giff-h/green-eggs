@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import pytest
-
 from green_eggs.channel import Channel
 from tests import response_context
 from tests.fixtures import *  # noqa
@@ -101,7 +99,6 @@ def test_is_user_in_channel(channel: Channel):
     assert not channel.is_user_in_channel('not_found')
 
 
-@pytest.mark.asyncio
 async def test_is_user_subscribed_with_messages(channel: Channel):
     message_subscribed = priv_msg(
         handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges=dict(subscriber='1'))
@@ -113,40 +110,37 @@ async def test_is_user_subscribed_with_messages(channel: Channel):
     channel.handle_message(message_not_subscribed)
     assert await channel.is_user_subscribed('123')
     assert '123' not in channel._api_results_cache
-    channel._api._session.request.assert_not_called()  # type: ignore[attr-defined]
+    channel._api.direct._session.request.assert_not_called()  # type: ignore[attr-defined]
 
 
-@pytest.mark.asyncio
 async def test_is_user_subscribed_with_api(channel: Channel):
-    channel._api._session.request.return_value = response_context(  # type: ignore[attr-defined]
+    channel._api.direct._session.request.return_value = response_context(  # type: ignore[attr-defined]
         return_json=dict(data=[dict(tier='1000')])
     )
     assert '123' not in channel._api_results_cache
     assert await channel.is_user_subscribed('123')
     assert '123' in channel._api_results_cache
-    channel._api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+    channel._api.direct._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET', 'base/subscriptions/user?broadcaster_id=&user_id=123', json=None
     )
 
 
-@pytest.mark.asyncio
 async def test_is_user_subscribed_false_with_api(channel: Channel):
-    channel._api._session.request.return_value = response_context(  # type: ignore[attr-defined]
+    channel._api.direct._session.request.return_value = response_context(  # type: ignore[attr-defined]
         return_json=dict(data=[dict()])
     )
     assert '123' not in channel._api_results_cache
     assert not await channel.is_user_subscribed('123')
     assert '123' in channel._api_results_cache
-    channel._api._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+    channel._api.direct._session.request.assert_called_once_with(  # type: ignore[attr-defined]
         'GET', 'base/subscriptions/user?broadcaster_id=&user_id=123', json=None
     )
 
 
-@pytest.mark.asyncio
 async def test_is_user_subscribed_with_cache(channel: Channel):
     channel._api_results_cache['123'] = dict(is_subscribed=True)
     assert await channel.is_user_subscribed('123')
-    channel._api._session.request.assert_not_called()  # type: ignore[attr-defined]
+    channel._api.direct._session.request.assert_not_called()  # type: ignore[attr-defined]
 
 
 def test_user_latest_message_none(channel: Channel):
@@ -184,14 +178,12 @@ def test_user_latest_message_display(channel: Channel):
     assert result.message == 'message two'
 
 
-@pytest.mark.asyncio
 async def test_send(channel: Channel):
     await channel.send('message content')
     sent = channel._chat._websocket._send_buffer.get_nowait()  # type: ignore[union-attr]
     assert sent == 'PRIVMSG #channel_user :message content'
 
 
-@pytest.mark.asyncio
 async def test_send_too_long(channel: Channel):
     try:
         await channel.send('A' * 501)
