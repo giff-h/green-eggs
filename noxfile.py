@@ -40,9 +40,9 @@ def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_mino
                 latest_minor is None or minor <= latest_minor
             )
             if include_version:
-                latest_patch = tuple(map(str, list(minor_group)[-1]))
-                path = os.path.join(pyenv_root, 'versions', '.'.join(latest_patch), 'bin', 'python')
-                _friendly_name_mapping[f'tests_pyenv-{path}'] = f'tests_pyenv-python{".".join(latest_patch[:-1])}'
+                latest_patch = list(minor_group)[-1]
+                path = os.path.join(pyenv_root, 'versions', '.'.join(map(str, latest_patch)), 'bin', 'python')
+                _friendly_name_mapping[f'tests_pyenv-{path}'] = f'tests_pyenv-python3.{minor}'
                 paths.append(path)
     except (subprocess.CalledProcessError, FileNotFoundError):
         # If anything fails, resolve to no paths
@@ -53,7 +53,7 @@ def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_mino
 def _run_tests(session: nox_poetry.Session, with_coverage=True):
     session.install('pytest-asyncio', 'pytest-cov', 'pytest-mock', '.')
     test_args = ['--cov-report=html', '--cov-append', '--cov=green_eggs'] if with_coverage else []
-    session.run('pytest', *test_args, 'tests/')
+    session.run('pytest', *test_args, 'tests')
 
 
 @nox_poetry.session(python=_get_latest_patch_of_minor_versions(oldest_minor=7, latest_minor=10))
@@ -70,11 +70,3 @@ def tests_whichever(session: nox_poetry.Session):
     Runs pytest with coverage on the first python version that nox finds.
     """
     _run_tests(session)
-
-
-@nox_poetry.session()
-def tests_ci(session: nox_poetry.Session):
-    """
-    Runs pytest without coverage for CI.
-    """
-    _run_tests(session, with_coverage=False)
