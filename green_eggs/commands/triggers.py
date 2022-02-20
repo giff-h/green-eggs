@@ -95,7 +95,7 @@ class FirstWordTrigger(CommandTrigger):
     """
     Command trigger that passes the check if the first word of the message matches the given value.
 
-    Can be made case sensitive or not. Case insensitive by default.
+    Can be made case-sensitive or not. Case-insensitive by default.
     """
 
     def __init__(self, value: str, case_sensitive=False):

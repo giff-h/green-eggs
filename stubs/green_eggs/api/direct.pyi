@@ -1,17 +1,15 @@
 from types import TracebackType
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
-from aiologger import Logger as Logger
+from aiologger import Logger
 
 UrlParams = Union[
     Mapping[Any, Any], Mapping[Any, Sequence[Any]], Sequence[Tuple[Any, Any]], Sequence[Tuple[Any, Sequence[Any]]]
 ]
 
-def exclude_non_empty(**kwargs): ...
-
-class TwitchApi:
+class TwitchApiDirect:
     def __init__(self, client_id: str, token: str, logger: Logger) -> None: ...
-    async def __aenter__(self) -> TwitchApi: ...
+    async def __aenter__(self) -> TwitchApiDirect: ...
     async def __aexit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ): ...

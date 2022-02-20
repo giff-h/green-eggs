@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import random
 import re
-from typing import Optional
 
 from green_eggs import ChatBot
 from green_eggs.channel import Channel
@@ -54,11 +53,8 @@ async def calm(channel: Channel):
 
 
 @bot.register_caster_command('!caster')
-def caster(name: str, link: str, game: Optional[str]):
-    if game is None:
-        return f'Go follow {name} at {link} they might start streaming soon :)'
-    else:
-        return f'We love {name}, check them out at {link} for fun times such as {game}'
+def caster(display_name: str, user_link: str, game_name: str):
+    return f'We love {display_name}, check them out at {user_link} for fun times such as {game_name}'
 
 
 if __name__ == '__main__':

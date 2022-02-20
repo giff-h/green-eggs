@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import AsyncIterator, Callable, ClassVar, Dict, Iterator, List, MutableMapping, Optional
 
-from green_eggs.api import TwitchApi
+from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
 from green_eggs.types import RegisterAbleFunc
@@ -19,9 +19,11 @@ class CommandRunner:
             p.name for p in validate_function_signature(command_func, self.command_keywords)
         ]
 
-    async def run(self, *, api: TwitchApi, channel: Channel, message: PrivMsg) -> Optional[str]:
-        kwargs = dict(api=api, channel=channel, message=message)
-        kwargs = {k: v for k, v in kwargs.items() if k in self._func_keywords}
+    def _filter_func_keywords(self, **kwargs):
+        return {k: v for k, v in kwargs.items() if k in self._func_keywords}
+
+    async def run(self, *, api: TwitchApiCommon, channel: Channel, message: PrivMsg) -> Optional[str]:
+        kwargs = self._filter_func_keywords(api=api, channel=channel, message=message)
         output = self._command_func(**kwargs)
         if output is None or isinstance(output, str):
             return output

@@ -6,6 +6,8 @@ from urllib.parse import urlencode
 import aiohttp
 from aiologger import Logger
 
+__all__ = ('TwitchApiDirect',)
+
 _empty: Any = object()
 UrlParams = Union[
     Mapping[Any, Any],
@@ -19,7 +21,7 @@ def exclude_non_empty(**kwargs):
     return {k: v for k, v in kwargs.items() if v is not _empty}
 
 
-class TwitchApi:
+class TwitchApiDirect:
     _base_url = 'https://api.twitch.tv/helix/'
 
     def __init__(self, *, client_id: str, token: str, logger: Logger):
@@ -61,7 +63,7 @@ class TwitchApi:
 
         return response_data
 
-    async def __aenter__(self) -> 'TwitchApi':
+    async def __aenter__(self) -> 'TwitchApiDirect':
         self._session = await self._session.__aenter__()
         return self
 

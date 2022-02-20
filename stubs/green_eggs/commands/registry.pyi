@@ -1,6 +1,6 @@
 from typing import Callable, ClassVar, Iterator, List, MutableMapping, Optional
 
-from green_eggs.api import TwitchApi as TwitchApi
+from green_eggs.api import TwitchApiCommon as TwitchApiCommon
 from green_eggs.channel import Channel as Channel
 from green_eggs.data_types import PrivMsg as PrivMsg
 from green_eggs.types import RegisterAbleFunc as RegisterAbleFunc
@@ -11,7 +11,7 @@ from .triggers import CommandTrigger as CommandTrigger
 class CommandRunner:
     command_keywords: ClassVar[List[str]]
     def __init__(self, command_func: RegisterAbleFunc) -> None: ...
-    async def run(self, api: TwitchApi, channel: Channel, message: PrivMsg) -> Optional[str]: ...
+    async def run(self, api: TwitchApiCommon, channel: Channel, message: PrivMsg) -> Optional[str]: ...
 
 class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
     def __init__(self) -> None: ...

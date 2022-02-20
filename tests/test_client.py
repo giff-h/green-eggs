@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
 
-import pytest
 from pytest_mock import MockerFixture
 from websockets.exceptions import ConnectionClosedError
 from websockets.frames import Close
@@ -23,7 +22,6 @@ def test_ensure_str():
     assert isinstance(ensure_str(b''), str)
 
 
-@pytest.mark.asyncio
 async def test_failed_connection_fails_all(mocker: MockerFixture):
     exc = Exception('FAIL')
     mocker.patch('websockets.connect', side_effect=exc)
@@ -36,7 +34,6 @@ async def test_failed_connection_fails_all(mocker: MockerFixture):
         assert e is exc
 
 
-@pytest.mark.asyncio
 async def test_broken_expectations(mocker: MockerFixture):
     mocker.patch('websockets.connect', return_value=mock_socket(ignore=['auth']))
     client = TwitchChatClient(username='test_username', token='test_token', logger=logger)
@@ -48,7 +45,6 @@ async def test_broken_expectations(mocker: MockerFixture):
         assert client.ws_exc is None
 
 
-@pytest.mark.asyncio
 async def test_initialize_requires_connection(mocker: MockerFixture):
     mocker.patch('websockets.connect', return_value=none_future())
     async with TwitchChatClient(username='test_username', token='test_token', logger=logger) as client:
@@ -57,13 +53,11 @@ async def test_initialize_requires_connection(mocker: MockerFixture):
         assert not await client.is_connected()
 
 
-@pytest.mark.asyncio
 async def test_initial_assumptions(client: TwitchChatClient):
     assert client._buffer_task is not None
     assert client._websocket is not None
 
 
-@pytest.mark.asyncio
 async def test_buffer_task_captures_closed_connection(client: TwitchChatClient, mocker: MockerFixture):
     mocker.patch('green_eggs.client.TwitchChatClient.connect', return_value=none_future())
     mocker.patch('green_eggs.client.TwitchChatClient.initialize', return_value=none_future())
@@ -78,7 +72,6 @@ async def test_buffer_task_captures_closed_connection(client: TwitchChatClient, 
     client.initialize.assert_called_once_with()  # type: ignore[attr-defined]
 
 
-@pytest.mark.asyncio
 async def test_buffer_task_captures_other_exception(client: TwitchChatClient, mocker: MockerFixture):
     mocker.patch('green_eggs.client.TwitchChatClient.connect')
     mocker.patch('green_eggs.client.TwitchChatClient.initialize')
@@ -91,7 +84,6 @@ async def test_buffer_task_captures_other_exception(client: TwitchChatClient, mo
     client.initialize.assert_not_called()  # type: ignore[attr-defined]
 
 
-@pytest.mark.asyncio
 async def test_reconnect_message_causes_reconnect(client: TwitchChatClient, mocker: MockerFixture):
     mocker.patch('green_eggs.client.TwitchChatClient.connect', return_value=none_future())
     mocker.patch('green_eggs.client.TwitchChatClient.initialize', return_value=none_future())
@@ -104,13 +96,11 @@ async def test_reconnect_message_causes_reconnect(client: TwitchChatClient, mock
     client.initialize.assert_called_once_with()  # type: ignore[attr-defined]
 
 
-@pytest.mark.asyncio
 async def test_connection_needs_websocket(client: TwitchChatClient):
     client._websocket = None
     assert not await client.is_connected()
 
 
-@pytest.mark.asyncio
 async def test_ping_pong(client: TwitchChatClient):
     await client._websocket._recv_buffer.put('PING hello')  # type: ignore[union-attr]
     await client._websocket._recv_buffer.put('something')  # type: ignore[union-attr]
@@ -121,7 +111,6 @@ async def test_ping_pong(client: TwitchChatClient):
     assert pong == 'PONG hello'
 
 
-@pytest.mark.asyncio
 async def test_join(client: TwitchChatClient):
     result = await client.join('Channel')
     assert result is True
@@ -130,14 +119,12 @@ async def test_join(client: TwitchChatClient):
         break  # FIXME add a wait timeout fail condition
 
 
-@pytest.mark.asyncio
 async def test_join_when_joining(client: TwitchChatClient):
     client._expectations['join'] = dict(channel=asyncio.Future())
     result = await client.join('Channel')
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_join_when_leaving_wait(client: TwitchChatClient):
     client._expect_timeout = 0.1
     client._expectations['part'] = dict(leavingchannel=asyncio.Future())
@@ -145,7 +132,6 @@ async def test_join_when_leaving_wait(client: TwitchChatClient):
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_join_when_leaving_raise(client: TwitchChatClient):
     client._expectations['part'] = dict(raising=asyncio.Future())
     try:
@@ -156,14 +142,12 @@ async def test_join_when_leaving_raise(client: TwitchChatClient):
         assert False, result
 
 
-@pytest.mark.asyncio
 async def test_join_when_leaving_abort(client: TwitchChatClient):
     client._expectations['part'] = dict(aborting=asyncio.Future())
     result = await client.join('aborting', 'abort')
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_leave(client: TwitchChatClient):
     result = await client.leave('Channel')
     assert result is True
@@ -172,14 +156,12 @@ async def test_leave(client: TwitchChatClient):
         break  # FIXME add a wait timeout fail condition
 
 
-@pytest.mark.asyncio
 async def test_leave_when_leaving(client: TwitchChatClient):
     client._expectations['part'] = dict(channel=asyncio.Future())
     result = await client.leave('Channel')
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_leave_when_joining_wait(client: TwitchChatClient):
     client._expect_timeout = 0.1
     client._expectations['join'] = dict(leavingchannel=asyncio.Future())
@@ -187,7 +169,6 @@ async def test_leave_when_joining_wait(client: TwitchChatClient):
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_leave_when_joining_raise(client: TwitchChatClient):
     client._expectations['join'] = dict(raising=asyncio.Future())
     try:
@@ -198,7 +179,6 @@ async def test_leave_when_joining_raise(client: TwitchChatClient):
         assert False, result
 
 
-@pytest.mark.asyncio
 async def test_leave_when_joining_abort(client: TwitchChatClient):
     client._expectations['join'] = dict(aborting=asyncio.Future())
     result = await client.leave('aborting', 'abort')

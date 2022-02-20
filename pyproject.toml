@@ -80,6 +80,9 @@ pytest-asyncio = "^0.18.0"
 pytest-cov = "^3.0.0"
 pytest-mock = "^3.6.1"
 
+[tool.pytest.ini_options]
+asyncio_mode = 'auto'
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

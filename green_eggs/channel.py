@@ -4,14 +4,14 @@ from logging import Logger
 from typing import Any, Deque, Dict, Optional, Set
 
 from green_eggs import constants as const
-from green_eggs.api import TwitchApi
+from green_eggs.api import TwitchApiCommon
 from green_eggs.client import TwitchChatClient
 from green_eggs.data_types import Code353, JoinPart, PrivMsg, RoomState
 
 
 class Channel:
-    def __init__(self, *, login: str, api: TwitchApi, chat: TwitchChatClient, logger: Logger):
-        self._api: TwitchApi = api
+    def __init__(self, *, login: str, api: TwitchApiCommon, chat: TwitchChatClient, logger: Logger):
+        self._api: TwitchApiCommon = api
         self._api_results_cache: Dict[str, Dict[str, Any]] = defaultdict(dict)
         self._chat: TwitchChatClient = chat
         self._last_five_for_user_id: Dict[str, Deque[PrivMsg]] = defaultdict(lambda: deque(maxlen=5))
@@ -107,8 +107,9 @@ class Channel:
             if 'is_subscribed' in self._api_results_cache[user_id]:
                 return self._api_results_cache[user_id]['is_subscribed']
 
-            results = await self._api.check_user_subscription(broadcaster_id=self.broadcaster_id, user_id=user_id)
-            is_subscribed = len(results['data']) > 0 and 'tier' in results['data'][0]
+            is_subscribed = await self._api.is_user_subscribed_to_channel(
+                broadcaster_id=self.broadcaster_id, user_id=user_id
+            )
             self._api_results_cache[user_id]['is_subscribed'] = is_subscribed
             return is_subscribed
 
@@ -116,7 +117,7 @@ class Channel:
         """
         Get the latest message the user sent in this channel, or None if they haven't sent yet.
 
-        Can be searched by either display name case insensitive or login. This distinction is important for non-ascii
+        Can be searched by either display name case-insensitive or login. This distinction is important for non-ascii
         display names.
 
         :param str user: The display or login name of the user

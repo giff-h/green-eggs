@@ -1,6 +1,6 @@
 from typing import Mapping
 
-from green_eggs.api import TwitchApi as TwitchApi
+from green_eggs.api import TwitchApiCommon as TwitchApiCommon
 from green_eggs.channel import Channel as Channel
 from green_eggs.client import TwitchChatClient as TwitchChatClient
 from green_eggs.commands import CommandRegistry as CommandRegistry
