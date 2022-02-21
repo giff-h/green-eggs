@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import datetime
-from typing import List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from aiologger import Logger
 
@@ -10,6 +10,8 @@ from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.client import TwitchChatClient
 from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
+from green_eggs.config import Config
+from green_eggs.data_types import PrivMsg
 from green_eggs.types import RegisterAbleFunc
 from green_eggs.utils import catch_all
 
@@ -37,22 +39,23 @@ async def _main_handler(
 
     if isinstance(handle_able, dt.HasTags):
         if len(handle_able.tags.unhandled):
-            type_name = type(handle_able.tags).__name__
+            type_name = type(handle_able.tags).__qualname__
             unhandled = handle_able.tags.unhandled
             logger.warning(f'Unhandled on {type_name}: {unhandled!r}')
         if isinstance(handle_able.tags, dt.UserNoticeTags):
             if len(handle_able.tags.msg_params.unhandled):
-                type_name = type(handle_able.tags.msg_params).__name__
+                type_name = type(handle_able.tags.msg_params).__qualname__
                 unhandled = handle_able.tags.msg_params.unhandled
                 logger.warning(f'Unhandled on {type_name}: {unhandled!r}')
 
     if isinstance(handle_able, dt.PrivMsg):
         channel.handle_message(handle_able)
-        command = await commands.find(handle_able, channel)
-        if command is not None:
-            result = await command.run(api=api, channel=channel, message=handle_able)
-            if isinstance(result, str):
-                await channel.send(result)
+        if not await channel.check_for_links(handle_able):
+            command = await commands.find(handle_able, channel)
+            if command is not None:
+                result = await command.run(api=api, channel=channel, message=handle_able)
+                if isinstance(result, str):
+                    await channel.send(result)
 
     elif isinstance(handle_able, dt.JoinPart):
         channel.handle_join_part(handle_able)
@@ -91,9 +94,30 @@ async def _main_handler(
 
 
 class ChatBot:
-    def __init__(self, *, channel: str):
+    def __init__(self, *, channel: str, config: Dict[str, Any] = None):
         self._channel: str = channel
         self._commands = CommandRegistry()
+        self._config = Config.from_python(**(config or dict()))
+
+        if self._config.purge_links:
+            self._register_permit_command()
+
+    def _register_permit_command(self):
+        def permit(channel: Channel, message: PrivMsg):
+            if len(message.words) > 1:
+                username = message.words[1].lstrip('@')
+                if username:
+                    if channel.add_permit_for_user(username):
+                        return (
+                            f'{username} - You have {self._config.link_permit_duration} seconds '
+                            f'to post one message with links that will not get bopped'
+                        )
+                    else:
+                        return f'@{message.tags.display_name} - That user already has a standing permit'
+            return f'@{message.tags.display_name} - Who do I permit exactly?'
+
+        trigger = FirstWordTrigger(self._config.link_permit_command_invoke) & SenderIsModTrigger()
+        self._commands.decorator(trigger)(permit)
 
     def register_basic_commands(self, commands: Mapping[str, str], *, case_sensitive=False):
         """
@@ -224,7 +248,7 @@ class ChatBot:
         async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
             async with TwitchApiCommon(client_id=client_id, token=token, logger=logger) as api:
                 await chat.join(self._channel)
-                channel = Channel(login=self._channel, api=api, chat=chat, logger=logger)
+                channel = Channel(login=self._channel, api=api, chat=chat, config=self._config, logger=logger)
 
                 async for raw, default_timestamp in chat.incoming():
                     asyncio.create_task(

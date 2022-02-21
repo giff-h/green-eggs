@@ -5,6 +5,7 @@ from pytest_mock import MockerFixture
 from green_eggs.api import TwitchApiCommon, TwitchApiDirect
 from green_eggs.channel import Channel
 from green_eggs.client import TwitchChatClient
+from green_eggs.config import Config
 from tests import logger, mock_socket, response_context
 
 __all__ = ('api_common', 'api_direct', 'channel', 'client')
@@ -30,7 +31,7 @@ async def api_direct(mocker: MockerFixture):
 
 @pytest.fixture
 def channel(api_common: TwitchApiCommon, client: TwitchChatClient):
-    channel = Channel(login='channel_user', api=api_common, chat=client, logger=logger)
+    channel = Channel(login='channel_user', api=api_common, chat=client, logger=logger, config=Config())
     return channel
 
 

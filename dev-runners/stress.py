@@ -4,17 +4,13 @@ import collections
 import json
 from pathlib import Path
 import pprint
-from typing import Dict, Set, Type, Union
+from typing import Dict, Set, Tuple, Type, Union
 
 import aiologger
 
+from green_eggs import data_types as dt
 from green_eggs.api import TwitchApiDirect
 from green_eggs.client import TwitchChatClient
-from green_eggs.data_types import BaseTags, HandleAble, HasTags, UserNoticeTags, patterns
-
-unhandled_bits: Dict[Union[Type[HandleAble], Type[BaseTags]], Dict[str, Set[str]]] = collections.defaultdict(
-    lambda: collections.defaultdict(set)
-)
 
 repo_dir = Path(__file__).resolve().parent.parent
 secrets_file = repo_dir / 'secrets.json'
@@ -24,11 +20,26 @@ client_id = secrets['client_id']
 token = secrets['token']
 
 
-def record_unhandled(data_type: Union[HandleAble, BaseTags]):
-    if isinstance(data_type, HasTags):
+def record_unhandled(data_type: Union[dt.HandleAble, dt.BaseTags]):
+    if isinstance(data_type, dt.BaseTags):
+        if data_type.unhandled:
+            print('Caught unhandled')
+            for key, value in data_type.unhandled.items():
+                unhandled_bits[type(data_type)][key].add(value)
+
+    if isinstance(data_type, dt.HasTags):
         record_unhandled(data_type.tags)
-    if isinstance(data_type, UserNoticeTags):
+    if isinstance(data_type, dt.UserNoticeTags):
         record_unhandled(data_type.msg_params)
+
+
+# Holders for actions later
+unhandled_bits: Dict[Union[Type[dt.HandleAble], Type[dt.BaseTags]], Dict[str, Set[str]]] = collections.defaultdict(
+    lambda: collections.defaultdict(set)
+)
+
+badges_set: Set[Tuple[str, str]] = set()
+badge_info_set: Set[Tuple[str, str]] = set()
 
 
 async def stress():
@@ -44,20 +55,25 @@ async def stress():
             await chat.join(login)
 
         async for raw, timestamp in chat.incoming():
-            for handle_type, pattern in patterns.items():
-                match = pattern.match(raw)
-                if match is not None:
+            for handle_type, pattern in dt.patterns.items():
+                match_result = pattern.match(raw)
+                if match_result is not None:
                     # TODO curses view
                     try:
                         handle_able = handle_type.from_match_dict(
-                            default_timestamp=timestamp, raw=raw, **match.groupdict()
+                            default_timestamp=timestamp, raw=raw, **match_result.groupdict()
                         )
                     except Exception as e:
                         print('Error handling matched message')
-                        print(f'- HandleAble type: {handle_type.__name__}\nRaw message: {raw!r}')
+                        print(f'- HandleAble type: {handle_type.__qualname__}\nRaw message: {raw!r}')
                         print(f'- {e}')
                     else:
+                        # Actions here
                         record_unhandled(handle_able)
+
+                        if isinstance(handle_able, dt.PrivMsg):
+                            badges_set.update((key, value) for key, value in handle_able.tags.badges.items())
+                            badge_info_set.update((key, value) for key, value in handle_able.tags.badge_info.items())
 
 
 if __name__ == '__main__':
@@ -71,6 +87,16 @@ if __name__ == '__main__':
             task.cancel()
     finally:
         print()  # jump past the ^C in the terminal
-        pprint.pprint({type_.__name__: dict(unhandled) for type_, unhandled in list(unhandled_bits.items())})
+
+        if unhandled_bits:
+            print('Unhandled:')
+            pprint.pprint({type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_bits.items())})
+        if badges_set:
+            print('Badges:')
+            pprint.pprint(sorted(badges_set))
+        if badge_info_set:
+            print('Badge info:')
+            pprint.pprint(sorted(badge_info_set))
+
         pending = asyncio.all_tasks(loop=loop)
         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
