@@ -183,3 +183,29 @@ async def test_leave_when_joining_abort(client: TwitchChatClient):
     client._expectations['join'] = dict(aborting=asyncio.Future())
     result = await client.leave('aborting', 'abort')
     assert result is False
+
+
+async def test_send_websocket_is_null(client: TwitchChatClient):
+    websocket = client._websocket  # hold it to put it back for teardown
+    client._websocket = None
+    await client.send('Nothing')
+    assert websocket._send_buffer.empty()  # type: ignore[union-attr]
+    client._websocket = websocket
+
+
+async def test_send_logs_message(client: TwitchChatClient, mocker: MockerFixture):
+    mocker.patch('aiologger.Logger.debug')
+    await client.send('Something')
+    client._logger.debug.assert_called_once_with('Sending data: \'Something\'')  # type: ignore[attr-defined]
+
+
+async def test_send_logs_redacted(client: TwitchChatClient, mocker: MockerFixture):
+    mocker.patch('aiologger.Logger.debug')
+    await client.send('SECRETS', 'redacted')
+    client._logger.debug.assert_called_once_with('Sending data: \'redacted\'')  # type: ignore[attr-defined]
+
+
+async def test_send_sends_data(client: TwitchChatClient):
+    await client.send('Message')
+    data = client._websocket._send_buffer.get_nowait()  # type: ignore[union-attr]
+    assert data == 'Message'

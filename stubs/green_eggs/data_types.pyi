@@ -188,6 +188,7 @@ class UserNoticeMessageParams(BaseTags):
     origin_id: Optional[str]
     prior_gifter_anonymous: Optional[bool]
     prior_gifter_display_name: Optional[str]
+    prior_gifter_id: Optional[str]
     prior_gifter_user_name: Optional[str]
     profile_image_url: Optional[str]
     promo_gift_total: Optional[int]
@@ -237,6 +238,7 @@ class UserNoticeMessageParams(BaseTags):
         origin_id,
         prior_gifter_anonymous,
         prior_gifter_display_name,
+        prior_gifter_id,
         prior_gifter_user_name,
         profile_image_url,
         promo_gift_total,
@@ -358,6 +360,7 @@ class HostTarget(InChannel):
     target: Optional[str]
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    def as_original_match_dict(self) -> Dict[str, Any]: ...
     def __init__(self, default_timestamp, raw, where, number_of_viewers, target) -> None: ...
 
 class JoinPart(UserInChannel):
