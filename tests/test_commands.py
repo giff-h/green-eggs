@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import inspect
 import sys
 from typing import List
@@ -13,9 +14,53 @@ from green_eggs.commands import (
     SenderIsModTrigger,
     SenderIsSubscribedTrigger,
 )
+from green_eggs.commands.triggers import async_all, async_any
 from green_eggs.types import RegisterAbleFunc
 from tests.fixtures import *  # noqa
 from tests.utils.data_types import priv_msg
+
+# ANY AND ALL
+
+
+async def test_async_all_empty():
+    assert await async_all(await nothing for nothing in [])  # type: ignore[arg-type]
+
+
+async def test_async_all_one_false():
+    true_future = asyncio.Future()
+    true_future.set_result(True)
+    false_future = asyncio.Future()
+    false_future.set_result(False)
+    assert not await async_all(await future for future in [true_future, false_future])  # type: ignore[arg-type]
+
+
+async def test_async_all_none_false():
+    future_one = asyncio.Future()
+    future_one.set_result(True)
+    future_two = asyncio.Future()
+    future_two.set_result(True)
+    assert await async_all(await future for future in [future_one, future_two])  # type: ignore[arg-type]
+
+
+async def test_async_any_empty():
+    assert not await async_any(await nothing for nothing in [])  # type: ignore[arg-type]
+
+
+async def test_async_any_one_false():
+    true_future = asyncio.Future()
+    true_future.set_result(True)
+    false_future = asyncio.Future()
+    false_future.set_result(False)
+    assert await async_any(await future for future in [true_future, false_future])  # type: ignore[arg-type]
+
+
+async def test_async_any_none_false():
+    future_one = asyncio.Future()
+    future_one.set_result(True)
+    future_two = asyncio.Future()
+    future_two.set_result(True)
+    assert await async_any(await future for future in [future_one, future_two])  # type: ignore[arg-type]
+
 
 # TRIGGERS
 
@@ -273,7 +318,8 @@ def test_registry_rejects_func():
     try:
         result = wrapper(_command)
     except TypeError as e:
-        assert 'Unexpected required keyword parameter' in e.args[0]
+        name = 'test_registry_rejects_func.<locals>._command'
+        assert e.args[0] == f'Unexpected required keyword parameter in <{name}>: \'extra\''
     else:
         assert False, result
 
@@ -283,8 +329,9 @@ if sys.version_info[:2] >= (3, 8):
 
     def test_registry_rejects_pos_only_args():
         # This is necessary to bypass the syntax error
-        func = '''def _command(a, /):
-    return str(a)'''
+        func = '''
+def _command(a, /):
+    return str(a)'''.strip()
         globals_ = dict(str=str)
         locals_ = dict()
         exec(func, globals_, locals_)
@@ -295,7 +342,7 @@ if sys.version_info[:2] >= (3, 8):
         try:
             result = wrapper(_command)
         except TypeError as e:
-            assert 'Command callbacks may not have any non-default positional-only parameters' in e.args[0]
+            assert e.args[0] == 'Positional-only parameters without defaults are not allowed in <_command>'
         else:
             assert False, result
 

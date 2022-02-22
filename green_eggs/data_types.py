@@ -351,6 +351,7 @@ class UserNoticeMessageParams(BaseTags):
     origin_id: Optional[str] = None
     prior_gifter_anonymous: Optional[bool] = None
     prior_gifter_display_name: Optional[str] = None
+    prior_gifter_id: Optional[str] = None
     prior_gifter_user_name: Optional[str] = None
     profile_image_url: Optional[str] = None
     promo_gift_total: Optional[int] = None
@@ -546,6 +547,17 @@ class HostTarget(InChannel):
             kwargs['target'] = None
 
         return super().from_match_dict(number_of_viewers=number_of_viewers, **kwargs)
+
+    def as_original_match_dict(self) -> Dict[str, Any]:
+        data = super().as_original_match_dict()
+        is_target_none = data['target'] is None
+        if is_target_none:
+            data['target'] = '-'
+            del data['number_of_viewers']
+        else:
+            if data['number_of_viewers'] is None:
+                data['number_of_viewers'] = '-'
+        return data
 
 
 @dataclass(frozen=True)

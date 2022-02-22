@@ -1,5 +1,13 @@
 # Green Eggs
 
+[![License](https://img.shields.io/github/license/hamstap85/green-eggs)](https://github.com/hamstap85/green-eggs/blob/main/LICENSE)
+[![Coverage](https://codecov.io/gh/hamstap85/green-eggs/branch/main/graph/badge.svg?token=VOFL8BKSZZ)](https://codecov.io/gh/hamstap85/green-eggs)
+[![Tests](https://img.shields.io/github/workflow/status/hamstap85/green-eggs/Test%20Code?event=push&label=tests)](https://github.com/hamstap85/green-eggs/actions/workflows/test-code.yml)
+[![Version](https://img.shields.io/pypi/v/green-eggs)](https://pypi.org/project/green-eggs/)
+[![Downloads](https://img.shields.io/pypi/dw/green-eggs)](https://pypi.org/project/green-eggs/)
+[![Supported Python](https://img.shields.io/pypi/pyversions/green-eggs)](https://pypi.org/project/green-eggs/)
+![Badges are fun](https://img.shields.io/badge/badges-awesome-green.svg)
+
 ### About
 
 This is a library/framework that you can use to easily create a channel chatbot with Python code.
