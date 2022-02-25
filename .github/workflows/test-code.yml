@@ -31,7 +31,7 @@ jobs:
         timeout-minutes: 10
       - name: "Tests"
         run: poetry run pytest --cov-report=xml --cov=green_eggs tests
-        timeout-minutes: 10
+        timeout-minutes: 5
       - name: "Upload coverage report"
         uses: codecov/codecov-action@v2
         timeout-minutes: 5

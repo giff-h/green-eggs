@@ -4,6 +4,7 @@ import inspect
 import sys
 from typing import List
 
+from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.commands import (
     AndTrigger,
@@ -16,6 +17,7 @@ from green_eggs.commands import (
 )
 from green_eggs.commands.triggers import async_all, async_any
 from green_eggs.types import RegisterAbleFunc
+from tests import response_context
 from tests.fixtures import *  # noqa
 from tests.utils.data_types import priv_msg
 
@@ -118,10 +120,16 @@ async def test_mod_trigger_broadcaster(channel: Channel):
     assert await trigger.check(message, channel)
 
 
-async def test_mod_trigger_normal(channel: Channel):
+async def test_mod_trigger_normal(api_common: TwitchApiCommon, channel: Channel):
+    api_common.direct._session.request.return_value = response_context(  # type: ignore[attr-defined]
+        return_json=dict(data=[])
+    )
     trigger = SenderIsModTrigger()
     message = priv_msg()
     assert not await trigger.check(message, channel)
+    api_common.direct._session.request.assert_called_once_with(  # type: ignore[attr-defined]
+        'GET', 'base/moderation/moderators?broadcaster_id=&first=100', json=None
+    )
 
 
 async def test_sub_trigger(channel: Channel):
@@ -218,9 +226,18 @@ def test_or_trigger_nested():
 
 
 async def test_or_trigger_check(channel: Channel):
+    a_not_mod = priv_msg(
+        handle_able_kwargs=dict(message='a', where='channel_user'), tags_kwargs=dict(user_id='not-a-mod')
+    )
+    b_is_mod = priv_msg(
+        handle_able_kwargs=dict(message='b', where='channel_user'),
+        tags_kwargs=dict(badges=dict(moderator='1'), mod=True, user_id='mod-id'),
+    )
+    channel.handle_message(a_not_mod)
+    channel.handle_message(b_is_mod)
     trigger = FirstWordTrigger('a') | SenderIsModTrigger()
-    assert await trigger.check(priv_msg(handle_able_kwargs=dict(message='a')), channel)
-    assert await trigger.check(priv_msg(handle_able_kwargs=dict(message='b'), tags_kwargs=dict(mod=True)), channel)
+    assert await trigger.check(a_not_mod, channel)
+    assert await trigger.check(b_is_mod, channel)
 
 
 # REGISTRY

@@ -336,9 +336,9 @@ class EndpointFunction:
         is_empty = len(text_lines) == 0 or (len(text_lines) == 1 and not len(text_lines[0]))
         if not is_empty:
             if self._is_under_url_header:
-                match = url_extractor.match(text_lines[0])
-                if match:
-                    url_strings: Dict[str, str] = match.groupdict()
+                match_result = url_extractor.match(text_lines[0])
+                if match_result:
+                    url_strings: Dict[str, str] = match_result.groupdict()
                     url_method = url_strings.get('url_method') or url_method_fallbacks.get(self.function_name, '')
                     assert url_method is not None
                     self._url_method = url_method
@@ -401,7 +401,7 @@ class EndpointFunction:
         for table in self._request_body_tables:
             body_params.extend(table.function_parameters(self.function_name))
         params_string = ', '.join(sorted(url_params) + sorted(body_params))
-        return ', *, ' + params_string if params_string else ''
+        return f', *, {params_string}' if params_string else ''
 
     @property
     def function_docstring(self) -> List[str]:

@@ -28,10 +28,13 @@ See `example.py` for an example bot setup. That's all there is for now, more in-
 - A Helix API accessor with functions for each documented endpoint, fully typed for URL parameter and payload body values.
 - An expandable way of specifying how messages trigger command, beyond just the first word being `!command`.
 - A complete suite of dataclasses to represent all possible data that comes through the IRC chat. This allows for robust typings.
+- Link detection and purging, complete with configurable allow conditions of link target and user status
+  - Link target allowing works on domain and/or path string or regex matching
+  - Currently, user conditions are only subscriber or VIP or either
 
 ### Features soon coming
 
-- Cooldowns on commands, per user and global.
+- Cool-downs on commands, per user and global.
 - Link detection and conditional deletion, so you don't have to disallow links in channel settings.
 
 ### Eventual future features

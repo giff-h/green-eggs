@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import datetime
 import json
 from pathlib import Path
-import sys
 
 from pytest_mock import MockerFixture
 
@@ -15,6 +15,7 @@ from green_eggs.channel import Channel
 from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
 from tests import logger
 from tests.fixtures import *  # noqa
+from tests.utils.compat import coroutine_result_value
 from tests.utils.data_types import priv_msg
 
 raw_data = json.loads((Path(__file__).resolve().parent / 'utils' / 'raw_data.json').read_text())
@@ -206,6 +207,68 @@ async def test_main_loop_whisper(api_common: TwitchApiCommon, channel: Channel):
     assert isinstance(result, dt.Whisper), type(result)
 
 
+def test_register_permit_not_by_default():
+    bot = ChatBot(channel='channel_user')
+    assert not bot._commands
+
+
+def test_register_permit_default_invoke():
+    bot = ChatBot(channel='channel_user', config=dict(purge_links=True))
+    assert len(bot._commands) == 1
+    trigger = next(iter(bot._commands.keys()))
+    assert trigger == FirstWordTrigger('!permit') & SenderIsModTrigger()
+
+
+def test_register_permit_uses_config():
+    bot = ChatBot(channel='channel_user', config=dict(purge_links=True, link_permit_command_invoke='!antibop'))
+    assert len(bot._commands) == 1
+    trigger = next(iter(bot._commands.keys()))
+    assert trigger == FirstWordTrigger('!antibop') & SenderIsModTrigger()
+
+
+async def test_permit_adds_permit_for_user(api_common: TwitchApiCommon, channel: Channel):
+    bot = ChatBot(channel='channel_user', config=dict(purge_links=True, link_permit_duration=0))
+    assert len(bot._commands) == 1
+    command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
+    message = priv_msg(
+        handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
+        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+    )
+    result = await command.run(api=api_common, channel=channel, message=message)
+    assert result == 'GoodUser - You have 0 seconds to post one message with links that will not get bopped'
+    assert 'gooduser' in channel._permit_cache
+
+
+async def test_permit_does_nothing_with_existing_permit(api_common: TwitchApiCommon, channel: Channel):
+    async def permit_task():
+        pass
+
+    bot = ChatBot(channel='channel_user', config=dict(purge_links=True, link_permit_duration=0))
+    assert len(bot._commands) == 1
+    command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
+    channel._permit_cache['gooduser'] = asyncio.create_task(permit_task())
+    message = priv_msg(
+        handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
+        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+    )
+    result = await command.run(api=api_common, channel=channel, message=message)
+    assert result == '@Sender - That user already has a standing permit'
+    assert 'gooduser' in channel._permit_cache
+
+
+async def test_permit_with_no_user_does_nothing(api_common: TwitchApiCommon, channel: Channel):
+    bot = ChatBot(channel='channel_user', config=dict(purge_links=True, link_permit_duration=0))
+    assert len(bot._commands) == 1
+    command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
+    message = priv_msg(
+        handle_able_kwargs=dict(message='!permit ', who='sender'),
+        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+    )
+    result = await command.run(api=api_common, channel=channel, message=message)
+    assert result == '@Sender - Who do I permit exactly?'
+    assert not channel._permit_cache
+
+
 async def test_register_basic(api_common: TwitchApiCommon, channel: Channel):
     bot = ChatBot(channel='channel_user')
     bot.register_basic_commands({'!command': 'Response message'})
@@ -260,30 +323,24 @@ async def test_register_caster_with_prior_message(api_common: TwitchApiCommon, c
         )
     )
 
-    async def get_channel_information():
-        return dict(
-            data=[
-                dict(
-                    broadcaster_id='1234',
-                    broadcaster_login='streamer',
-                    broadcaster_name='Streamer',
-                    game_name='The Best Game Ever',
-                    game_id='5678',
-                    broadcaster_language='en',
-                    title='My Stream',
-                )
-            ]
-        )
-
-    if sys.version_info[:2] == (3, 7):
-        mocker.patch(
-            'green_eggs.api.direct.TwitchApiDirect.get_channel_information', return_value=get_channel_information()
-        )
-    else:
-        mocker.patch(
-            'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
-            return_value=await get_channel_information(),
-        )
+    mocker.patch(
+        'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
+        return_value=coroutine_result_value(
+            dict(
+                data=[
+                    dict(
+                        broadcaster_id='1234',
+                        broadcaster_login='streamer',
+                        broadcaster_name='Streamer',
+                        game_name='The Best Game Ever',
+                        game_id='5678',
+                        broadcaster_language='en',
+                        title='My Stream',
+                    )
+                ]
+            )
+        ),
+    )
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!so')
@@ -303,35 +360,28 @@ async def test_register_caster_with_prior_message(api_common: TwitchApiCommon, c
 async def test_register_caster_without_prior_message(
     api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture
 ):
-    async def get_users():
-        return dict(data=[dict(id='135')])
-
-    async def get_channel_information():
-        return dict(
-            data=[
-                dict(
-                    broadcaster_id='135',
-                    broadcaster_login='other_streamer',
-                    broadcaster_name='Other_Streamer',
-                    game_name='The Other Best Game Ever',
-                    game_id='579',
-                    broadcaster_language='en',
-                    title='My Other Stream',
-                )
-            ]
-        )
-
-    if sys.version_info[:2] == (3, 7):
-        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=get_users())
-        mocker.patch(
-            'green_eggs.api.direct.TwitchApiDirect.get_channel_information', return_value=get_channel_information()
-        )
-    else:
-        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=await get_users())
-        mocker.patch(
-            'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
-            return_value=await get_channel_information(),
-        )
+    mocker.patch(
+        'green_eggs.api.direct.TwitchApiDirect.get_users',
+        return_value=coroutine_result_value(dict(data=[dict(id='135')])),
+    )
+    mocker.patch(
+        'green_eggs.api.direct.TwitchApiDirect.get_channel_information',
+        return_value=coroutine_result_value(
+            dict(
+                data=[
+                    dict(
+                        broadcaster_id='135',
+                        broadcaster_login='other_streamer',
+                        broadcaster_name='Other_Streamer',
+                        game_name='The Other Best Game Ever',
+                        game_id='579',
+                        broadcaster_language='en',
+                        title='My Other Stream',
+                    )
+                ]
+            )
+        ),
+    )
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!shoutout')
@@ -362,13 +412,7 @@ async def test_register_caster_without_prior_message(
 
 
 async def test_register_caster_no_user_found(api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture):
-    async def get_users():
-        return dict(data=[])
-
-    if sys.version_info[:2] == (3, 7):
-        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=get_users())
-    else:
-        mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=await get_users())
+    mocker.patch('green_eggs.api.direct.TwitchApiDirect.get_users', return_value=coroutine_result_value(dict(data=[])))
     bot = ChatBot(channel='channel_user')
 
     @bot.register_caster_command('!nope')

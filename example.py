@@ -4,9 +4,21 @@ import re
 
 from green_eggs import ChatBot
 from green_eggs.channel import Channel
+from green_eggs.config import LinkAllowUserConditions
 from green_eggs.data_types import PrivMsg
 
-bot = ChatBot(channel='your_channel_goes_here')
+bot = ChatBot(
+    channel='your_channel_goes_here',
+    config=dict(
+        block_links=True,
+        link_allow_user_condition=LinkAllowUserConditions.USER_VIP | LinkAllowUserConditions.USER_SUBSCRIBED,
+        link_allow_target_conditions=[
+            dict(domain='clips.twitch.tv'),  # main twitch clips link
+            dict(domain=re.compile(r'(www\.)?twitch\.tv'), path=re.compile(r'/.+/clips/.+')),  # alternate clips link
+            dict(domain=re.compile(r'(.+\.)?imgur\.com')),  # who doesn't want memes
+        ],
+    ),
+)
 
 bot.register_basic_commands(
     {
@@ -20,10 +32,10 @@ bot.register_basic_commands(
 def roll(message: PrivMsg):
     dice_regex = re.compile(r'(?P<count>\d*)d(?P<sides>\d+)')
     spec = message.words[1] if len(message.words) >= 2 else '1d20'
-    match = dice_regex.match(spec)
-    if match is not None:
-        count = int(match.group('count') or 1)
-        sides = int(match.group('sides'))
+    match_result = dice_regex.match(spec)
+    if match_result is not None:
+        count = int(match_result.group('count') or 1)
+        sides = int(match_result.group('sides'))
 
         if count > 0 and sides > 1:
             response = f'{message.tags.display_name} rolled {count} d{sides} and got '

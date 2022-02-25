@@ -286,34 +286,34 @@ class TwitchChatClient:
             pattern = self.expectation_patterns[expect]
 
             if expect == AUTH_EXPECT:
-                match = pattern.match(data)
-                if match is not None:
-                    code = match.group('code')
-                    self._logger.debug(f'Auth resp: {match.group("msg")!r}')
+                match_result = pattern.match(data)
+                if match_result is not None:
+                    code = match_result.group('code')
+                    self._logger.debug(f'Auth resp: {match_result.group("msg")!r}')
                     self.resolve_expectations(expect, code)
                     return False
 
             elif expect == CAP_REQ_EXPECT:
-                match = pattern.match(data)
-                if match is not None:
-                    acknowledged = match.group('cap')
+                match_result = pattern.match(data)
+                if match_result is not None:
+                    acknowledged = match_result.group('cap')
                     self._logger.debug(f'Capacities acknowledged: {acknowledged}')
                     capacities = [cap[10:] for cap in acknowledged.split(' ')]
                     self.resolve_expectations(expect, *capacities)
                     return False
 
             elif expect == JOIN_EXPECT:
-                match = pattern.match(data)
-                if match is not None:
-                    if match.group('who') == self._username:
-                        self.resolve_expectations(expect, match.group('joined'))
+                match_result = pattern.match(data)
+                if match_result is not None:
+                    if match_result.group('who') == self._username:
+                        self.resolve_expectations(expect, match_result.group('joined'))
                         return True
 
             elif expect == PART_EXPECT:
-                match = pattern.match(data)
-                if match is not None:
-                    if match.group('who') == self._username:
-                        self.resolve_expectations(expect, match.group('left'))
+                match_result = pattern.match(data)
+                if match_result is not None:
+                    if match_result.group('who') == self._username:
+                        self.resolve_expectations(expect, match_result.group('left'))
                         return True
 
         return True

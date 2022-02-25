@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import abc
 from collections.abc import Hashable
-import itertools
 from typing import Any, AsyncGenerator, Iterable, Iterator, List
 
 from green_eggs.channel import Channel
@@ -39,23 +38,21 @@ class CommandTrigger(Hashable, abc.ABC):
 
 class LogicTrigger(CommandTrigger, abc.ABC):
     @classmethod
-    def _flatten(cls, triggers: Iterable[CommandTrigger]) -> Iterator[Iterable[CommandTrigger]]:
+    def _flatten(cls, triggers: Iterable[CommandTrigger]) -> Iterator[CommandTrigger]:
         for trigger in triggers:
             if isinstance(trigger, cls):
                 # a & (b & c) & d ≡ a & b & c & d
                 # a | (b | c) | d ≡ a | b | c | d
-                yield trigger._triggers
+                yield from trigger._triggers
             elif isinstance(trigger, LogicTrigger) and not len(trigger._triggers):
-                yield tuple()
+                pass
             else:
-                yield (trigger,)
+                yield trigger
 
     def __init__(self, *triggers: CommandTrigger):
         # set because a & a ≡ a and a | a ≡ a
         # sorted because a & b ≡ b & a and a | b ≡ b | a
-        self._triggers: List[CommandTrigger] = sorted(
-            set(itertools.chain.from_iterable(self._flatten(triggers))), key=hash
-        )
+        self._triggers: List[CommandTrigger] = sorted(set(self._flatten(triggers)), key=hash)
 
     def __hash__(self) -> int:
         return hash((type(self), tuple(self._triggers)))
@@ -120,7 +117,7 @@ class SenderIsModTrigger(CommandTrigger):
         return hash((type(self),))
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        return message.tags.mod or 'broadcaster' in message.tags.badges
+        return message.is_sender_moderator or await channel.is_user_moderator(message.tags.user_id)
 
 
 class SenderIsSubscribedTrigger(CommandTrigger):
@@ -132,4 +129,4 @@ class SenderIsSubscribedTrigger(CommandTrigger):
         return hash((type(self),))
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        return await channel.is_user_subscribed(message.tags.user_id)
+        return message.is_sender_subscribed or await channel.is_user_subscribed(message.tags.user_id)

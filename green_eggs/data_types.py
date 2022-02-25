@@ -479,6 +479,16 @@ class HasMessage(HandleAble, abc.ABC):
 
         return super().from_match_dict(**kwargs)
 
+    @property
+    def words(self) -> List[str]:
+        """
+        Returns the words of the message, split by any amount of empty space.
+
+        :return: List of words
+        :rtype: List[str]
+        """
+        return self.message.split()
+
 
 @dataclass(frozen=True)
 class HasTags(HandleAble, abc.ABC):
@@ -584,9 +594,40 @@ class Notice(HasMessage, HasTags, InChannel):
 class PrivMsg(HasMessage, HasTags, UserInChannel):
     tags: PrivMsgTags
 
+    def action_ban(self, reason: str = '') -> str:
+        """
+        Returns a message to send to a channel to ban the sender of this message.
+
+        :param str reason: The optional reason for banning this user
+        :rtype: str
+        """
+        reason = reason.strip()
+        return f'/ban {self.who} {reason}' if reason else f'/ban {self.who}'
+
+    def action_delete(self) -> str:
+        """
+        Returns a message to send to a channel to delete this message.
+
+        :rtype: str
+        """
+        return f'/delete {self.tags.id}'
+
+    def action_timeout(self, seconds: int = 60, reason: str = '') -> str:
+        """
+        Returns a message to send to a channel to time out the sender of this message.
+
+        Timeout duration defaults to one minute.
+
+        :param int seconds: The duration of the timeout
+        :param str reason: The optional reason for timing out this user
+        :rtype: str
+        """
+        reason = reason.strip()
+        return f'/timeout {self.who} {seconds} {reason}' if reason else f'/timeout {self.who} {seconds}'
+
     def is_from_user(self, user: str) -> bool:
         """
-        Is this message sent by the given user.
+        Returns whether this message was sent by the given user.
 
         Checks display name and login case-insensitive.
 
@@ -598,24 +639,46 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         return self.who == user or self.tags.display_name.lower() == user
 
     @property
+    def is_sender_broadcaster(self) -> bool:
+        """
+        Returns whether the sender is the broadcaster in the channel this message was sent.
+
+        :return: True if the message has a broadcaster badge
+        :rtype: bool
+        """
+        return 'broadcaster' in self.tags.badges
+
+    @property
+    def is_sender_moderator(self) -> bool:
+        """
+        Returns whether the sender is a moderator in the channel this message was sent.
+
+        The broadcaster counts as a mod.
+
+        :return: True if the message has a moderator badge or is the broadcaster
+        :rtype: bool
+        """
+        return self.tags.mod or 'moderator' in self.tags.badges or self.is_sender_broadcaster
+
+    @property
     def is_sender_subscribed(self) -> bool:
         """
-        Is the sender indicated as subscribed in the channel this message was sent.
+        Returns whether the sender is indicated as subscribed in the channel this message was sent.
 
         :return: True if the message has a subscriber badge
         :rtype: bool
         """
-        return 'subscriber' in self.tags.badges
+        return 'subscriber' in self.tags.badges or 'subscriber' in self.tags.badge_info
 
     @property
-    def words(self) -> List[str]:
+    def is_sender_vip(self) -> bool:
         """
-        The words of the message, split by any amount of empty space.
+        Returns whether the sender is a VIP in the channel this message was sent.
 
-        :return: List of words
-        :rtype: List[str]
+        :return: True if the message has a VIP badge
+        :rtype: bool
         """
-        return self.message.split()
+        return 'vip' in self.tags.badges
 
 
 @dataclass(frozen=True)
