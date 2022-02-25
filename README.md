@@ -35,7 +35,7 @@ See `example.py` for an example bot setup. That's all there is for now, more in-
 ### Features soon coming
 
 - Cool-downs on commands, per user and global.
-- Link detection and conditional deletion, so you don't have to disallow links in channel settings.
+- Local database to hold historical data.
 
 ### Eventual future features
 

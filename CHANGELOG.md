@@ -1,8 +1,8 @@
 Release History
 ===============
 
-Soon™️
------
+0.2.0 (2022-02-24)
+------------------
 
 - Added a class for first class access to common API usage
   - An instance of this is now passed to decorated function commands instead of the original raw API class. No
