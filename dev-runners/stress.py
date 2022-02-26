@@ -4,7 +4,7 @@ import collections
 import json
 from pathlib import Path
 import pprint
-from typing import Dict, Set, Tuple, Type, Union
+from typing import Dict, Set, Type
 
 import aiologger
 
@@ -20,35 +20,29 @@ client_id = secrets['client_id']
 token = secrets['token']
 
 
-def record_unhandled(data_type: Union[dt.HandleAble, dt.BaseTags]):
-    if isinstance(data_type, dt.BaseTags):
-        if data_type.unhandled:
-            print('Caught unhandled')
-            for key, value in data_type.unhandled.items():
-                unhandled_bits[type(data_type)][key].add(value)
-
-    if isinstance(data_type, dt.HasTags):
-        record_unhandled(data_type.tags)
-    if isinstance(data_type, dt.UserNoticeTags):
-        record_unhandled(data_type.msg_params)
-
-
 # Holders for actions later
-unhandled_bits: Dict[Union[Type[dt.HandleAble], Type[dt.BaseTags]], Dict[str, Set[str]]] = collections.defaultdict(
+unhandled_tags: Dict[Type[dt.HandleAble], Dict[str, Set[str]]] = collections.defaultdict(
     lambda: collections.defaultdict(set)
 )
-
-badges_set: Set[Tuple[str, str]] = set()
-badge_info_set: Set[Tuple[str, str]] = set()
+unhandled_badges: Dict[Type[dt.HandleAble], Dict[str, Set[str]]] = collections.defaultdict(
+    lambda: collections.defaultdict(set)
+)
+unhandled_badge_info: Dict[Type[dt.HandleAble], Dict[str, Set[str]]] = collections.defaultdict(
+    lambda: collections.defaultdict(set)
+)
+unhandled_msg_params: Dict[Type[dt.HandleAble], Dict[str, Set[str]]] = collections.defaultdict(
+    lambda: collections.defaultdict(set)
+)
 
 
 async def stress():
     logger = aiologger.Logger.with_default_handlers(name='stress')
+    logins = []
 
     async with TwitchApiDirect(client_id=client_id, token=token, logger=logger) as api:
-        streams = await api.get_streams(first=10)
+        streams = await api.get_streams(first=20 - len(logins))
 
-    logins = [stream['user_login'] for stream in streams['data']]
+    logins.extend(stream['user_login'] for stream in streams['data'])
 
     async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
         for login in logins:
@@ -69,11 +63,29 @@ async def stress():
                         print(f'- {e}')
                     else:
                         # Actions here
-                        record_unhandled(handle_able)
+                        if isinstance(handle_able, dt.HasTags):
+                            for key, value in handle_able.tags.unhandled.items():
+                                if key not in unhandled_tags[handle_type]:
+                                    print(f'Unhandled {handle_type.__name__} tag: {key!r}')
+                                unhandled_tags[handle_type][key].add(value)
 
-                        if isinstance(handle_able, dt.PrivMsg):
-                            badges_set.update((key, value) for key, value in handle_able.tags.badges.items())
-                            badge_info_set.update((key, value) for key, value in handle_able.tags.badge_info.items())
+                            if isinstance(handle_able.tags, dt.UserBaseTags):
+                                for key, value in handle_able.tags.badges.unhandled.items():
+                                    if key not in unhandled_badges[handle_type]:
+                                        print(f'Unhandled {handle_type.__name__} badge: {key!r}')
+                                    unhandled_badges[handle_type][key].add(value)
+
+                            if isinstance(handle_able.tags, dt.UserChatBaseTags):
+                                for key, value in handle_able.tags.badge_info.unhandled.items():
+                                    if key not in unhandled_badge_info[handle_type]:
+                                        print(f'Unhandled {handle_type.__name__} badge info: {key!r}')
+                                    unhandled_badge_info[handle_type][key].add(value)
+
+                            if isinstance(handle_able.tags, dt.UserNoticeTags):
+                                for key, value in handle_able.tags.msg_params.unhandled.items():
+                                    if key not in unhandled_msg_params[handle_type]:
+                                        print(f'Unhandled {handle_type.__name__} msg_param: {key!r}')
+                                    unhandled_msg_params[handle_type][key].add(value)
 
 
 if __name__ == '__main__':
@@ -88,15 +100,22 @@ if __name__ == '__main__':
     finally:
         print()  # jump past the ^C in the terminal
 
-        if unhandled_bits:
-            print('Unhandled:')
-            pprint.pprint({type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_bits.items())})
-        if badges_set:
-            print('Badges:')
-            pprint.pprint(sorted(badges_set))
-        if badge_info_set:
-            print('Badge info:')
-            pprint.pprint(sorted(badge_info_set))
+        if unhandled_tags:
+            print('Unhandled tags:')
+            pprint.pprint({type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_tags.items())})
+        if unhandled_badges:
+            print('Unhandled badges:')
+            pprint.pprint({type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_badges.items())})
+        if unhandled_badge_info:
+            print('Unhandled badge info:')
+            pprint.pprint(
+                {type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_badge_info.items())}
+            )
+        if unhandled_msg_params:
+            print('Unhandled msg_params:')
+            pprint.pprint(
+                {type_.__qualname__: dict(unhandled) for type_, unhandled in list(unhandled_msg_params.items())}
+            )
 
         pending = asyncio.all_tasks(loop=loop)
         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))

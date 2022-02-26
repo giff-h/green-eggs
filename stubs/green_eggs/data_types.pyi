@@ -4,6 +4,8 @@ from typing import Any, Callable, ClassVar, Dict, List, Optional, Pattern, Tuple
 
 class BaseTags(abc.ABC):
     deprecated_fields: ClassVar[List[str]]
+    pair_list_splitter: ClassVar[str]
+    key_value_splitter: ClassVar[str]
     deprecated: Dict[str, str]
     unhandled: Dict[str, str]
     raw: str
@@ -14,28 +16,254 @@ class BaseTags(abc.ABC):
     def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw) -> None: ...
 
+class BaseBadges(BaseTags, abc.ABC):
+    deprecated_fields: ClassVar[List[str]]
+    pair_list_splitter: ClassVar[str]
+    key_value_splitter: ClassVar[str]
+    converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]]
+    @classmethod
+    def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    @property
+    def badge_order(self) -> List[str]: ...
+    def __init__(self, deprecated, unhandled, raw) -> None: ...
+
 class TimestampedBaseTags(BaseTags, abc.ABC):
     tmi_sent_ts: datetime.datetime
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw, tmi_sent_ts) -> None: ...
 
+class Badges(BaseBadges):
+    admin: Optional[str]
+    ambassador: Optional[str]
+    anomaly_2_1: Optional[str]
+    anomaly_warzone_earth_1: Optional[str]
+    anonymous_cheerer: Optional[str]
+    artist_badge: Optional[str]
+    axiom_verge_1: Optional[str]
+    battlechefbrigade_1: Optional[str]
+    battlechefbrigade_2: Optional[str]
+    battlechefbrigade_3: Optional[str]
+    battlerite_1: Optional[str]
+    bits: Optional[str]
+    bits_charity: Optional[str]
+    bits_leader: Optional[str]
+    brawlhalla_1: Optional[str]
+    broadcaster: Optional[str]
+    broken_age_1: Optional[str]
+    bubsy_the_woolies_1: Optional[str]
+    clip_champ: Optional[str]
+    cuphead_1: Optional[str]
+    darkest_dungeon_1: Optional[str]
+    deceit_1: Optional[str]
+    devil_may_cry_hd_1: Optional[str]
+    devil_may_cry_hd_2: Optional[str]
+    devil_may_cry_hd_3: Optional[str]
+    devil_may_cry_hd_4: Optional[str]
+    devilian_1: Optional[str]
+    duelyst_1: Optional[str]
+    duelyst_2: Optional[str]
+    duelyst_3: Optional[str]
+    duelyst_4: Optional[str]
+    duelyst_5: Optional[str]
+    duelyst_6: Optional[str]
+    duelyst_7: Optional[str]
+    enter_the_gungeon_1: Optional[str]
+    eso_1: Optional[str]
+    extension: Optional[str]
+    firewatch_1: Optional[str]
+    founder: Optional[str]
+    frozen_cortext_1: Optional[str]
+    frozen_synapse_1: Optional[str]
+    getting_over_it_1: Optional[str]
+    getting_over_it_2: Optional[str]
+    glhf_pledge: Optional[str]
+    glitchcon2020: Optional[str]
+    global_mod: Optional[str]
+    h1z1_1: Optional[str]
+    heavy_bullets_1: Optional[str]
+    hello_neighbor_1: Optional[str]
+    hype_train: Optional[str]
+    innerspace_1: Optional[str]
+    innerspace_2: Optional[str]
+    jackbox_party_pack_1: Optional[str]
+    kingdom_new_lands_1: Optional[str]
+    moderator: Optional[str]
+    moments: Optional[str]
+    num_1979_revolution_1: Optional[str]
+    num_60_seconds_1: Optional[str]
+    num_60_seconds_2: Optional[str]
+    num_60_seconds_3: Optional[str]
+    okhlos_1: Optional[str]
+    overwatch_league_insider_1: Optional[str]
+    overwatch_league_insider_2018b: Optional[str]
+    overwatch_league_insider_2019a: Optional[str]
+    overwatch_league_insider_2019b: Optional[str]
+    partner: Optional[str]
+    power_rangers: Optional[str]
+    predictions: Optional[str]
+    premium: Optional[str]
+    psychonauts_1: Optional[str]
+    raiden_v_directors_cut_1: Optional[str]
+    rift_1: Optional[str]
+    samusoffer_beta: Optional[str]
+    staff: Optional[str]
+    starbound_1: Optional[str]
+    strafe_1: Optional[str]
+    sub_gift_leader: Optional[str]
+    sub_gifter: Optional[str]
+    subscriber: Optional[str]
+    superhot_1: Optional[str]
+    the_surge_1: Optional[str]
+    the_surge_2: Optional[str]
+    the_surge_3: Optional[str]
+    this_war_of_mine_1: Optional[str]
+    titan_souls_1: Optional[str]
+    treasure_adventure_world_1: Optional[str]
+    turbo: Optional[str]
+    twitchbot: Optional[str]
+    twitchcon2017: Optional[str]
+    twitchcon2018: Optional[str]
+    twitchcon_amsterdam2020: Optional[str]
+    twitchcon_eu2019: Optional[str]
+    twitchcon_na2019: Optional[str]
+    twitchcon_na2020: Optional[str]
+    tyranny_1: Optional[str]
+    user_anniversary: Optional[str]
+    vga_champ_2017: Optional[str]
+    vip: Optional[str]
+    warcraft: Optional[str]
+    def __init__(
+        self,
+        deprecated,
+        unhandled,
+        raw,
+        admin,
+        ambassador,
+        anomaly_2_1,
+        anomaly_warzone_earth_1,
+        anonymous_cheerer,
+        artist_badge,
+        axiom_verge_1,
+        battlechefbrigade_1,
+        battlechefbrigade_2,
+        battlechefbrigade_3,
+        battlerite_1,
+        bits,
+        bits_charity,
+        bits_leader,
+        brawlhalla_1,
+        broadcaster,
+        broken_age_1,
+        bubsy_the_woolies_1,
+        clip_champ,
+        cuphead_1,
+        darkest_dungeon_1,
+        deceit_1,
+        devil_may_cry_hd_1,
+        devil_may_cry_hd_2,
+        devil_may_cry_hd_3,
+        devil_may_cry_hd_4,
+        devilian_1,
+        duelyst_1,
+        duelyst_2,
+        duelyst_3,
+        duelyst_4,
+        duelyst_5,
+        duelyst_6,
+        duelyst_7,
+        enter_the_gungeon_1,
+        eso_1,
+        extension,
+        firewatch_1,
+        founder,
+        frozen_cortext_1,
+        frozen_synapse_1,
+        getting_over_it_1,
+        getting_over_it_2,
+        glhf_pledge,
+        glitchcon2020,
+        global_mod,
+        h1z1_1,
+        heavy_bullets_1,
+        hello_neighbor_1,
+        hype_train,
+        innerspace_1,
+        innerspace_2,
+        jackbox_party_pack_1,
+        kingdom_new_lands_1,
+        moderator,
+        moments,
+        num_1979_revolution_1,
+        num_60_seconds_1,
+        num_60_seconds_2,
+        num_60_seconds_3,
+        okhlos_1,
+        overwatch_league_insider_1,
+        overwatch_league_insider_2018b,
+        overwatch_league_insider_2019a,
+        overwatch_league_insider_2019b,
+        partner,
+        power_rangers,
+        predictions,
+        premium,
+        psychonauts_1,
+        raiden_v_directors_cut_1,
+        rift_1,
+        samusoffer_beta,
+        staff,
+        starbound_1,
+        strafe_1,
+        sub_gift_leader,
+        sub_gifter,
+        subscriber,
+        superhot_1,
+        the_surge_1,
+        the_surge_2,
+        the_surge_3,
+        this_war_of_mine_1,
+        titan_souls_1,
+        treasure_adventure_world_1,
+        turbo,
+        twitchbot,
+        twitchcon2017,
+        twitchcon2018,
+        twitchcon_amsterdam2020,
+        twitchcon_eu2019,
+        twitchcon_na2019,
+        twitchcon_na2020,
+        tyranny_1,
+        user_anniversary,
+        vga_champ_2017,
+        vip,
+        warcraft,
+    ) -> None: ...
+
 class UserBaseTags(BaseTags, abc.ABC):
-    badges: _Badges
+    badges: Badges
     color: str
     display_name: str
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw, badges, color, display_name) -> None: ...
 
+class BadgeInfo(BaseBadges):
+    converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]]
+    founder: Optional[str]
+    subscriber: Optional[str]
+    predictions: Optional[str]
+    def __init__(self, deprecated, unhandled, raw, founder, subscriber, predictions) -> None: ...
+
 class UserChatBaseTags(UserBaseTags, abc.ABC):
-    badge_info: _Badges
+    badge_info: BadgeInfo
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info) -> None: ...
 
 class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
-    emote_sets: List[int]
+    emote_sets: str
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw, badges, color, display_name, badge_info, emote_sets) -> None: ...
@@ -271,6 +499,7 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     msg_params: UserNoticeMessageParams
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
+    def model_data(self) -> Dict[str, Any]: ...
     def __init__(
         self,
         deprecated,

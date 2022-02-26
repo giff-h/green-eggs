@@ -116,7 +116,7 @@ async def test_mod_trigger_hash():
 
 async def test_mod_trigger_broadcaster(channel: Channel):
     trigger = SenderIsModTrigger()
-    message = priv_msg(tags_kwargs=dict(badges=dict(broadcaster=1)))
+    message = priv_msg(tags_kwargs=dict(badges_kwargs=dict(broadcaster=1)))
     assert await trigger.check(message, channel)
 
 
@@ -134,7 +134,9 @@ async def test_mod_trigger_normal(api_common: TwitchApiCommon, channel: Channel)
 
 async def test_sub_trigger(channel: Channel):
     trigger = SenderIsSubscribedTrigger()
-    message = priv_msg(handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(badges=dict(subscriber='1')))
+    message = priv_msg(
+        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(badges_kwargs=dict(subscriber='1'))
+    )
     channel.handle_message(message)
     assert await trigger.check(message, channel)
 
@@ -231,7 +233,7 @@ async def test_or_trigger_check(channel: Channel):
     )
     b_is_mod = priv_msg(
         handle_able_kwargs=dict(message='b', where='channel_user'),
-        tags_kwargs=dict(badges=dict(moderator='1'), mod=True, user_id='mod-id'),
+        tags_kwargs=dict(badges_kwargs=dict(moderator='1'), mod=True, user_id='mod-id'),
     )
     channel.handle_message(a_not_mod)
     channel.handle_message(b_is_mod)

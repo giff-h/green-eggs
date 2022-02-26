@@ -232,7 +232,7 @@ async def test_permit_adds_permit_for_user(api_common: TwitchApiCommon, channel:
     command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
     message = priv_msg(
         handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
-        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+        tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
     assert result == 'GoodUser - You have 0 seconds to post one message with links that will not get bopped'
@@ -249,7 +249,7 @@ async def test_permit_does_nothing_with_existing_permit(api_common: TwitchApiCom
     channel._permit_cache['gooduser'] = asyncio.create_task(permit_task())
     message = priv_msg(
         handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
-        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+        tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
     assert result == '@Sender - That user already has a standing permit'
@@ -262,7 +262,7 @@ async def test_permit_with_no_user_does_nothing(api_common: TwitchApiCommon, cha
     command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
     message = priv_msg(
         handle_able_kwargs=dict(message='!permit ', who='sender'),
-        tags_kwargs=dict(badges=dict(moderator='1'), display_name='Sender', mod=True),
+        tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
     assert result == '@Sender - Who do I permit exactly?'
