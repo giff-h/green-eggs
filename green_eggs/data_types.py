@@ -2,15 +2,12 @@
 import abc
 from dataclasses import dataclass, field, fields
 import datetime
-from functools import partial, reduce
 import keyword
 import re
 from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, Pattern, Tuple, Type
 
 from green_eggs import constants as const
 
-_Badges = Dict[str, str]
-_bool_of_int_of: 'partial[bool]' = partial(reduce, lambda x, y: y(x), (int, bool))
 _camel_kebab_to_snake_pattern: Pattern[str] = re.compile(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|-+')
 _unescape_lookup: Dict[str, str] = {
     '\\': '\\',
@@ -21,9 +18,22 @@ _unescape_lookup: Dict[str, str] = {
 }
 
 
-def _keyword_safe_camel_or_kebab_to_snake(inp: str) -> str:
-    out = _camel_kebab_to_snake_pattern.sub('_', inp).lower()
-    return f'{out}_' if keyword.iskeyword(out) else out
+def _clean_for_attribute(inp: str) -> str:
+    """
+    Cleans a potentially unsafe string for attribute assignment.
+
+    Input can be camel case, kebab case, or hybrid, and will be converted to lower snake case.
+    Anything beginning with a number 0-9 will be prefixed with 'num_'
+
+    :param str inp: The potentially unsafe string to clean
+    :return: A string that is safe for attribute assignment
+    :rtype: str
+    """
+    snake_case = _camel_kebab_to_snake_pattern.sub('_', inp).lower()
+    keyword_safe = f'{snake_case}_' if keyword.iskeyword(snake_case) else snake_case
+    numeric_safe = f'num_{keyword_safe}' if keyword_safe[0].isdecimal() else keyword_safe
+
+    return numeric_safe
 
 
 def _irc_v3_unescape_iter(raw: str) -> Generator[str, None, None]:
@@ -45,13 +55,8 @@ def _irc_v3_unescape(raw: str) -> str:
     return ''.join(_irc_v3_unescape_iter(raw))
 
 
-def _parse_badge(badge_data: str) -> Tuple[str, str]:
-    badge_type, badge_value = badge_data.split('/')
-    return badge_type.replace('-', '_'), badge_value
-
-
-def _parse_badges(badges_data: str) -> _Badges:
-    return dict(map(_parse_badge, filter(None, badges_data.split(','))))
+def _bool_of_int_of(inp: str) -> bool:
+    return bool(int(inp))
 
 
 # Tags: Abstract
@@ -64,6 +69,8 @@ class BaseTags(abc.ABC):
         'turbo',
         'user_type',
     ]
+    pair_list_splitter: ClassVar[str] = ';'
+    key_value_splitter: ClassVar[str] = '='
 
     deprecated: Dict[str, str]
     unhandled: Dict[str, str]
@@ -74,9 +81,10 @@ class BaseTags(abc.ABC):
         tag: str
         value: str
         to_prepare: Dict[str, str] = dict()
-        for tag_pair in data.split(';'):
-            tag, value = tag_pair.split('=', 1)
-            to_prepare[_keyword_safe_camel_or_kebab_to_snake(tag)] = value
+        for tag_pair in data.split(cls.pair_list_splitter):
+            if tag_pair:
+                tag, value = tag_pair.split(cls.key_value_splitter, 1)
+                to_prepare[_clean_for_attribute(tag)] = value
 
         return cls(raw=data, **cls.prepare_data(**to_prepare))
 
@@ -88,19 +96,35 @@ class BaseTags(abc.ABC):
         return dict(deprecated=deprecated, unhandled=unhandled, **kwargs)
 
     def model_data(self) -> Dict[str, Any]:
-        data = {
-            f.name: getattr(self, f.name)
-            for f in fields(self)
-            if not isinstance(getattr(self, f.name), UserNoticeMessageParams)
-        }
-        if isinstance(self, UserNoticeTags):
-            data['msg_params'] = msg_params = dict()
-            for f in fields(self.msg_params):
-                val = getattr(self.msg_params, f.name)
-                if val is not None:
-                    msg_params[f.name] = val
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
-        return data
+
+@dataclass(frozen=True)
+class BaseBadges(BaseTags, abc.ABC):
+    deprecated_fields: ClassVar[List[str]] = []
+    pair_list_splitter: ClassVar[str] = ','
+    key_value_splitter: ClassVar[str] = '/'
+    converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]] = []
+
+    @classmethod
+    def prepare_data(cls, **kwargs) -> Dict[str, Any]:
+        return dict(
+            **{
+                attr: converter(kwargs.pop(attr))
+                for converter, attrs in cls.converter_mapping
+                for attr in attrs
+                if attr in kwargs
+            },
+            **super().prepare_data(**kwargs),
+        )
+
+    @property
+    def badge_order(self) -> List[str]:
+        return [
+            _clean_for_attribute(tag_pair.split(self.key_value_splitter, 1)[0])
+            for tag_pair in self.raw.split(self.pair_list_splitter)
+            if tag_pair
+        ]
 
 
 @dataclass(frozen=True)
@@ -115,40 +139,178 @@ class TimestampedBaseTags(BaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
+class Badges(BaseBadges):
+    # Populated from TwitchApiDirect.get_global_chat_badges
+    # `sorted(_clean_for_attribute(badge['set_id']) for badge in results['data'])`
+    admin: Optional[str] = None
+    ambassador: Optional[str] = None
+    anomaly_2_1: Optional[str] = None
+    anomaly_warzone_earth_1: Optional[str] = None
+    anonymous_cheerer: Optional[str] = None
+    artist_badge: Optional[str] = None
+    axiom_verge_1: Optional[str] = None
+    battlechefbrigade_1: Optional[str] = None
+    battlechefbrigade_2: Optional[str] = None
+    battlechefbrigade_3: Optional[str] = None
+    battlerite_1: Optional[str] = None
+    bits: Optional[str] = None
+    bits_charity: Optional[str] = None
+    bits_leader: Optional[str] = None
+    brawlhalla_1: Optional[str] = None
+    broadcaster: Optional[str] = None
+    broken_age_1: Optional[str] = None
+    bubsy_the_woolies_1: Optional[str] = None
+    clip_champ: Optional[str] = None
+    cuphead_1: Optional[str] = None
+    darkest_dungeon_1: Optional[str] = None
+    deceit_1: Optional[str] = None
+    devil_may_cry_hd_1: Optional[str] = None
+    devil_may_cry_hd_2: Optional[str] = None
+    devil_may_cry_hd_3: Optional[str] = None
+    devil_may_cry_hd_4: Optional[str] = None
+    devilian_1: Optional[str] = None
+    duelyst_1: Optional[str] = None
+    duelyst_2: Optional[str] = None
+    duelyst_3: Optional[str] = None
+    duelyst_4: Optional[str] = None
+    duelyst_5: Optional[str] = None
+    duelyst_6: Optional[str] = None
+    duelyst_7: Optional[str] = None
+    enter_the_gungeon_1: Optional[str] = None
+    eso_1: Optional[str] = None
+    extension: Optional[str] = None
+    firewatch_1: Optional[str] = None
+    founder: Optional[str] = None
+    frozen_cortext_1: Optional[str] = None
+    frozen_synapse_1: Optional[str] = None
+    getting_over_it_1: Optional[str] = None
+    getting_over_it_2: Optional[str] = None
+    glhf_pledge: Optional[str] = None
+    glitchcon2020: Optional[str] = None
+    global_mod: Optional[str] = None
+    h1z1_1: Optional[str] = None
+    heavy_bullets_1: Optional[str] = None
+    hello_neighbor_1: Optional[str] = None
+    hype_train: Optional[str] = None
+    innerspace_1: Optional[str] = None
+    innerspace_2: Optional[str] = None
+    jackbox_party_pack_1: Optional[str] = None
+    kingdom_new_lands_1: Optional[str] = None
+    moderator: Optional[str] = None
+    moments: Optional[str] = None
+    num_1979_revolution_1: Optional[str] = None
+    num_60_seconds_1: Optional[str] = None
+    num_60_seconds_2: Optional[str] = None
+    num_60_seconds_3: Optional[str] = None
+    okhlos_1: Optional[str] = None
+    overwatch_league_insider_1: Optional[str] = None
+    overwatch_league_insider_2018b: Optional[str] = None
+    overwatch_league_insider_2019a: Optional[str] = None
+    overwatch_league_insider_2019b: Optional[str] = None
+    partner: Optional[str] = None
+    power_rangers: Optional[str] = None
+    predictions: Optional[str] = None
+    premium: Optional[str] = None
+    psychonauts_1: Optional[str] = None
+    raiden_v_directors_cut_1: Optional[str] = None
+    rift_1: Optional[str] = None
+    samusoffer_beta: Optional[str] = None
+    staff: Optional[str] = None
+    starbound_1: Optional[str] = None
+    strafe_1: Optional[str] = None
+    sub_gift_leader: Optional[str] = None
+    sub_gifter: Optional[str] = None
+    subscriber: Optional[str] = None
+    superhot_1: Optional[str] = None
+    the_surge_1: Optional[str] = None
+    the_surge_2: Optional[str] = None
+    the_surge_3: Optional[str] = None
+    this_war_of_mine_1: Optional[str] = None
+    titan_souls_1: Optional[str] = None
+    treasure_adventure_world_1: Optional[str] = None
+    turbo: Optional[str] = None
+    twitchbot: Optional[str] = None
+    twitchcon2017: Optional[str] = None
+    twitchcon2018: Optional[str] = None
+    twitchcon_amsterdam2020: Optional[str] = None
+    twitchcon_eu2019: Optional[str] = None
+    twitchcon_na2019: Optional[str] = None
+    twitchcon_na2020: Optional[str] = None
+    tyranny_1: Optional[str] = None
+    user_anniversary: Optional[str] = None
+    vga_champ_2017: Optional[str] = None
+    vip: Optional[str] = None
+    warcraft: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class UserBaseTags(BaseTags, abc.ABC):
-    badges: _Badges
+    badges: Badges
     color: str
     display_name: str
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            badges=_parse_badges(kwargs.pop('badges')),
+            badges=Badges.from_raw_data(kwargs.pop('badges')),
             display_name=_irc_v3_unescape(kwargs.pop('display_name')),
             **super().prepare_data(**kwargs),
         )
 
+    def model_data(self) -> Dict[str, Any]:
+        data = super().model_data()
+
+        data['badges'] = badges = dict()
+        for f in fields(self.badges):
+            value = getattr(self.badges, f.name)
+            if value is not None:
+                badges[f.name] = value
+
+        return data
+
+
+@dataclass(frozen=True)
+class BadgeInfo(BaseBadges):
+    converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]] = [
+        (_irc_v3_unescape, ['predictions']),
+    ]
+
+    founder: Optional[str] = None
+    subscriber: Optional[str] = None
+    predictions: Optional[str] = None
+
 
 @dataclass(frozen=True)
 class UserChatBaseTags(UserBaseTags, abc.ABC):
-    badge_info: _Badges
+    badge_info: BadgeInfo
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            badge_info=_parse_badges(kwargs.pop('badge_info')),
+            badge_info=BadgeInfo.from_raw_data(kwargs.pop('badge_info')),
             **super().prepare_data(**kwargs),
         )
+
+    def model_data(self) -> Dict[str, Any]:
+        data = super().model_data()
+
+        data['badge_info'] = badge_info = dict()
+        for f in fields(self.badge_info):
+            value = getattr(self.badge_info, f.name)
+            if value is not None:
+                badge_info[f.name] = value
+
+        return data
 
 
 @dataclass(frozen=True)
 class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
-    emote_sets: List[int]
+    emote_sets: str
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
-            emote_sets=list(map(int, kwargs.pop('emote_sets').split(','))),
+            # emote_sets=list(map(int, kwargs.pop('emote_sets').split(','))),  # FIXME needs work
             **super().prepare_data(**kwargs),
         )
 
@@ -420,6 +582,17 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
             **super().prepare_data(**kwargs),
         )
 
+    def model_data(self) -> Dict[str, Any]:
+        data = super().model_data()
+
+        data['msg_params'] = msg_params = dict()
+        for f in fields(self.msg_params):
+            value = getattr(self.msg_params, f.name)
+            if value is not None:
+                msg_params[f.name] = value
+
+        return data
+
 
 @dataclass(frozen=True)
 class UserStateTags(UserEmoteSetsBaseTags, UserIsModBaseTags):
@@ -646,7 +819,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         :return: True if the message has a broadcaster badge
         :rtype: bool
         """
-        return 'broadcaster' in self.tags.badges
+        return self.tags.badges.broadcaster is not None
 
     @property
     def is_sender_moderator(self) -> bool:
@@ -658,7 +831,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         :return: True if the message has a moderator badge or is the broadcaster
         :rtype: bool
         """
-        return self.tags.mod or 'moderator' in self.tags.badges or self.is_sender_broadcaster
+        return self.tags.mod or self.tags.badges.moderator is not None or self.is_sender_broadcaster
 
     @property
     def is_sender_subscribed(self) -> bool:
@@ -668,7 +841,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         :return: True if the message has a subscriber badge
         :rtype: bool
         """
-        return 'subscriber' in self.tags.badges or 'subscriber' in self.tags.badge_info
+        return self.tags.badges.subscriber is not None or self.tags.badge_info.subscriber is not None
 
     @property
     def is_sender_vip(self) -> bool:
@@ -678,7 +851,7 @@ class PrivMsg(HasMessage, HasTags, UserInChannel):
         :return: True if the message has a VIP badge
         :rtype: bool
         """
-        return 'vip' in self.tags.badges
+        return self.tags.badges.vip is not None
 
 
 @dataclass(frozen=True)

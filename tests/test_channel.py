@@ -184,7 +184,7 @@ async def test_check_for_links_allows_vip_by_default(
     assert not await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
-            tags_kwargs=dict(badges=dict(vip='1'), id='message-with-link'),
+            tags_kwargs=dict(badges_kwargs=dict(vip='1'), id='message-with-link'),
         )
     )
     assert channel._chat._websocket._send_buffer.empty()  # type: ignore[union-attr]
@@ -208,7 +208,9 @@ async def test_check_for_links_allows_subscriber_if_told_to(
     assert not await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
-            tags_kwargs=dict(badge_info=dict(subscriber='7'), badges=dict(subscriber='2006'), id='message-with-link'),
+            tags_kwargs=dict(
+                badge_info_kwargs=dict(subscriber='7'), badges_kwargs=dict(subscriber='2006'), id='message-with-link'
+            ),
         )
     )
     assert channel._chat._websocket._send_buffer.empty()  # type: ignore[union-attr]
@@ -259,7 +261,9 @@ async def test_check_for_links_allows_subbed_vip_if_config_allows_sub_not_vip(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(
-                badge_info=dict(subscriber='1'), badges=dict(subscriber='1', vip='1'), id='message-with-link'
+                badge_info_kwargs=dict(subscriber='1'),
+                badges_kwargs=dict(subscriber='1', vip='1'),
+                id='message-with-link',
             ),
         )
     )
@@ -283,7 +287,9 @@ async def test_check_for_links_allows_subscriber_if_config_allows_subs_and_vip(
     assert not await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com now'),
-            tags_kwargs=dict(badge_info=dict(subscriber='1'), badges=dict(subscriber='1'), id='message-with-link'),
+            tags_kwargs=dict(
+                badge_info_kwargs=dict(subscriber='1'), badges_kwargs=dict(subscriber='1'), id='message-with-link'
+            ),
         )
     )
     assert channel._chat._websocket._send_buffer.empty()  # type: ignore[union-attr]
@@ -307,7 +313,7 @@ async def test_check_for_links_deletes_vip_if_told_by_default(
     assert await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
-            tags_kwargs=dict(badges=dict(vip='1'), id='message-with-link'),
+            tags_kwargs=dict(badges_kwargs=dict(vip='1'), id='message-with-link'),
         )
     )
     sent = channel._chat._websocket._send_buffer.get_nowait()  # type: ignore[union-attr]
@@ -327,7 +333,7 @@ async def test_check_for_links_allows_moderator_always(
     assert not await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
-            tags_kwargs=dict(badges=dict(moderator='1'), id='message-with-link', mod=True),
+            tags_kwargs=dict(badges_kwargs=dict(moderator='1'), id='message-with-link', mod=True),
         )
     )
     assert channel._chat._websocket._send_buffer.empty()  # type: ignore[union-attr]
@@ -535,7 +541,7 @@ async def test_is_user_moderator_true_if_they_sent_moderator_messages(api_common
     channel.handle_message(
         priv_msg(
             handle_able_kwargs=dict(message='Hi', where='channel_user'),
-            tags_kwargs=dict(badges=dict(moderator='1'), mod=True, user_id='mod-id'),
+            tags_kwargs=dict(badges_kwargs=dict(moderator='1'), mod=True, user_id='mod-id'),
         )
     )
     result = await channel.is_user_moderator('mod-id')
@@ -584,10 +590,11 @@ async def test_is_user_moderator_false_if_the_api_says_so(
 
 async def test_is_user_subscribed_with_messages(channel: Channel):
     message_subscribed = priv_msg(
-        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges=dict(subscriber='1'))
+        handle_able_kwargs=dict(where='channel_user'),
+        tags_kwargs=dict(user_id='123', badges_kwargs=dict(subscriber='1')),
     )
     message_not_subscribed = priv_msg(
-        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges=dict())
+        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges_kwargs=dict())
     )
     channel.handle_message(message_subscribed)
     channel.handle_message(message_not_subscribed)
@@ -630,7 +637,7 @@ def test_is_user_vip_true_if_they_sent_vip_messages(channel: Channel):
     channel.handle_message(
         priv_msg(
             handle_able_kwargs=dict(message='Hi', where='channel_user'),
-            tags_kwargs=dict(badges=dict(vip='1'), user_id='vip-id'),
+            tags_kwargs=dict(badges_kwargs=dict(vip='1'), user_id='vip-id'),
         )
     )
     result = channel.is_user_vip('vip-id')
