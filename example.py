@@ -28,7 +28,7 @@ bot.register_basic_commands(
 )
 
 
-@bot.register_command('!roll')
+@bot.register_command('!roll', global_cooldown=2)
 def roll(message: PrivMsg):
     dice_regex = re.compile(r'(?P<count>\d*)d(?P<sides>\d+)')
     spec = message.words[1] if len(message.words) >= 2 else '1d20'
@@ -57,7 +57,7 @@ def roll(message: PrivMsg):
     return 'Usage: !roll [count]d[sides]'
 
 
-@bot.register_command('!calm')
+@bot.register_command('!calm', user_cooldown=10)
 async def calm(channel: Channel):
     await channel.send('EVERYBODY PANIC!')
     await channel.send('/me =============\\o\\')

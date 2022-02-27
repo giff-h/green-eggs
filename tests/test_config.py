@@ -21,6 +21,8 @@ def test_validate_enum_member_invalid_when_value_is_an_enum_name():
         Config.validate_enum_member(dict(test='DELETE'), 'test', LinkPurgeActions, 'the illuminati')
     except ValueError as e:
         assert e.args[0] == 'Invalid value for test: \'DELETE\'. Must be a member of the illuminati'
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_enum_member_invalid_when_a_different_enum():
@@ -29,10 +31,11 @@ def test_validate_enum_member_invalid_when_a_different_enum():
             dict(test=LinkPurgeActions.DELETE), 'test', LinkAllowUserConditions, 'the illuminati'
         )
     except ValueError as e:
-        assert (
-            e.args[0] == 'Invalid value for test: <LinkPurgeActions.DELETE: \'delete\'>. '
-            'Must be a member of the illuminati'
+        assert e.args[0] == (
+            'Invalid value for test: <LinkPurgeActions.DELETE: \'delete\'>. Must be a member of the illuminati'
         )
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_enum_member_valid_creatable():
@@ -50,6 +53,17 @@ def test_validate_instance_invalid_when_wrong_type():
         Config.validate_instance(dict(test=1), 'test', str)
     except ValueError as e:
         assert e.args[0] == 'Invalid value for test: 1. Must be an instance of str'
+    else:
+        assert False, 'Not raised'
+
+
+def test_validate_instance_invalid_with_tuple_of_types():
+    try:
+        Config.validate_instance(dict(test=2), 'test', (bool, type(None)))
+    except ValueError as e:
+        assert e.args[0] == 'Invalid value for test: 2. Must be an instance of bool or NoneType'
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_instance_valid_for_subclasses():
@@ -68,7 +82,9 @@ def test_validate_config_link_purge_action_invalid():
     try:
         Config.validate_config(dict(link_purge_action='abc'))
     except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_purge_action: \'abc\'. ' 'Must be a member of LinkPurgeActions'
+        assert e.args[0] == 'Invalid value for link_purge_action: \'abc\'. Must be a member of LinkPurgeActions'
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_user_condition_valid():
@@ -79,10 +95,11 @@ def test_validate_config_link_allow_user_condition_invalid():
     try:
         Config.validate_config(dict(link_allow_user_condition='abc'))
     except ValueError as e:
-        assert (
-            e.args[0] == 'Invalid value for link_allow_user_condition: \'abc\'. '
-            'Must be a member of LinkAllowUserConditions'
+        assert e.args[0] == (
+            'Invalid value for link_allow_user_condition: \'abc\'. Must be a member of LinkAllowUserConditions'
         )
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_config_link_purge_timeout_duration_valid():
@@ -93,7 +110,9 @@ def test_validate_config_link_purge_timeout_duration_invalid():
     try:
         Config.validate_config(dict(link_purge_timeout_duration='abc'))
     except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_purge_timeout_duration: \'abc\'. ' 'Must be an instance of int'
+        assert e.args[0] == 'Invalid value for link_purge_timeout_duration: \'abc\'. Must be an instance of int'
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_target_conditions_valid_empty():
@@ -112,22 +131,26 @@ def test_validate_config_link_allow_target_conditions_invalid_not_list():
     try:
         Config.validate_config(dict(link_allow_target_conditions='abc'))
     except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_allow_target_conditions: \'abc\'. ' 'Must be an instance of list'
+        assert e.args[0] == 'Invalid value for link_allow_target_conditions: \'abc\'. Must be an instance of list'
+    else:
+        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_target_conditions_invalid_int():
     try:
         Config.validate_config(dict(link_allow_target_conditions=[dict(test=1)]))
     except ValueError as e:
-        assert (
-            e.args[0] == 'Invalid value for link_allow_target_conditions: {\'test\': 1}. '
+        assert e.args[0] == (
+            'Invalid value for link_allow_target_conditions: {\'test\': 1}. '
             'All values must either be string or regex pattern'
         )
+    else:
+        assert False, 'Not raised'
 
 
 def test_from_python_defaults():
     config = Config.from_python()
-    assert config.purge_links is False
+    assert config.should_purge_links is False
     assert config.link_purge_action == LinkPurgeActions.DELETE
     assert config.link_purge_timeout_duration == 1
     assert config.link_allow_user_condition == LinkAllowUserConditions.USER_VIP

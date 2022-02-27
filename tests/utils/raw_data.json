@@ -2,6 +2,9 @@
   "clear chat": [
     "@ban-duration=180;room-id=123;target-msg-id=479df7ff-33e5-40e5-af13-639b489a60e5;target-user-id=1;tmi-sent-ts=1630909055574 :tmi.twitch.tv CLEARCHAT #channel_user :baduser1"
   ],
+  "clear message": [
+    "@login=user1;target-msg-id=57ee3aef-209e-4ca4-a010-a4ddf9e4a536;tmi-sent-ts=1630898681696 :tmi.twitch.tv CLEARMSG #channel_user :deleted"
+  ],
   "code 353": [
     ":bot_user.tmi.twitch.tv 353 bot_user = #channel_user :user1 user2"
   ],
@@ -52,5 +55,8 @@
   ],
   "user state": [
     "@badge-info=;badges=;color=;display-name=Bot_User;emote-sets=0;mod=0;subscriber=0;user-type= :tmi.twitch.tv USERSTATE #channel_user"
+  ],
+  "whisper": [
+    "@badges=;color=#ABCDEF;display-name=User1;emotes=;message-id=1;thread-id=2;user-id=3 :user1!user1@user1.tmi.twitch.tv WHISPER #channel_user :psst"
   ]
 }

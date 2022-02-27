@@ -69,7 +69,7 @@ class Channel:
         :return: `True` if action was taken, `False` if not.
         :rtype: bool
         """
-        if not self._config.purge_links:
+        if not self._config.should_purge_links:
             return False  # Don't purge links, short circuit
         links = URL_PATTERN.findall(message.message)
         if not links:

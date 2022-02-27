@@ -7,6 +7,7 @@ from typing import Optional
 from green_eggs.data_types import (
     Badges,
     ClearChat,
+    ClearMsg,
     Code353,
     Code366,
     HandleAble,
@@ -17,6 +18,7 @@ from green_eggs.data_types import (
     RoomState,
     UserNotice,
     UserState,
+    Whisper,
     patterns,
 )
 from tests.utils.data_types import join_part, priv_msg
@@ -43,70 +45,71 @@ def data_type_from_data(raw: str) -> HandleAble:
     return result
 
 
-def base_asserts(data):
+def base_asserts(data, handle_type):
     assert len(data)
+    assert all(isinstance(dt, handle_type) for dt in data)
     assert all(dt == dt.from_match_dict(**dt.as_original_match_dict()) for dt in data)
     assert all(json.dumps(dt.model_data(), default=default_json_dump) for dt in data)
 
 
 def test_clearchat():
     data = list(map(data_type_from_data, raw_data['clear chat']))
-    assert all(isinstance(dt, ClearChat) for dt in data)
-    base_asserts(data)
+    base_asserts(data, ClearChat)
+
+
+def test_clearmsg():
+    data = list(map(data_type_from_data, raw_data['clear message']))
+    base_asserts(data, ClearMsg)
 
 
 def test_code353():
     data = list(map(data_type_from_data, raw_data['code 353']))
-    assert all(isinstance(dt, Code353) for dt in data)
-    base_asserts(data)
+    base_asserts(data, Code353)
 
 
 def test_code366():
     data = list(map(data_type_from_data, raw_data['code 366']))
-    assert all(isinstance(dt, Code366) for dt in data)
-    base_asserts(data)
+    base_asserts(data, Code366)
 
 
 def test_hosttarget():
     data = list(map(data_type_from_data, raw_data['host target']))
-    assert all(isinstance(dt, HostTarget) for dt in data)
-    base_asserts(data)
+    base_asserts(data, HostTarget)
 
 
 def test_joinpart():
     data = list(map(data_type_from_data, raw_data['join part']))
-    assert all(isinstance(dt, JoinPart) for dt in data)
-    base_asserts(data)
+    base_asserts(data, JoinPart)
 
 
 def test_notice():
     data = list(map(data_type_from_data, raw_data['notice']))
-    assert all(isinstance(dt, Notice) for dt in data)
-    base_asserts(data)
+    base_asserts(data, Notice)
 
 
 def test_privmsg():
     data = list(map(data_type_from_data, raw_data['message']))
-    assert all(isinstance(dt, PrivMsg) for dt in data)
-    base_asserts(data)
+    base_asserts(data, PrivMsg)
 
 
 def test_roomstate():
     data = list(map(data_type_from_data, raw_data['room state']))
-    assert all(isinstance(dt, RoomState) for dt in data)
-    base_asserts(data)
+    base_asserts(data, RoomState)
 
 
 def test_usernotice():
     data = list(map(data_type_from_data, raw_data['user notice']))
-    assert all(isinstance(dt, UserNotice) for dt in data)
-    base_asserts(data)
+    base_asserts(data, UserNotice)
 
 
 def test_userstate():
     data = list(map(data_type_from_data, raw_data['user state']))
-    assert all(isinstance(dt, UserState) for dt in data)
-    base_asserts(data)
+    base_asserts(data, UserState)
+
+
+def test_whisper():
+    data = list(map(data_type_from_data, raw_data['whisper']))
+    base_asserts(data, Whisper)
 
 
 # Functions and properties

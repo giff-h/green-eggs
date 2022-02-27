@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 import sys
+import time
 from typing import List
 
 from green_eggs.api import TwitchApiCommon
@@ -16,6 +17,7 @@ from green_eggs.commands import (
     SenderIsSubscribedTrigger,
 )
 from green_eggs.commands.triggers import async_all, async_any
+from green_eggs.exceptions import CooldownNotElapsed, GlobalCooldownNotElapsed, UserCooldownNotElapsed
 from green_eggs.types import RegisterAbleFunc
 from tests import response_context
 from tests.fixtures import *  # noqa
@@ -245,6 +247,120 @@ async def test_or_trigger_check(channel: Channel):
 # REGISTRY
 
 
+async def test_runner_sync_function(api_common: TwitchApiCommon, channel: Channel):
+    def sync_func():
+        return 'hello'
+
+    runner = CommandRunner(sync_func, global_cooldown=None, user_cooldown=None)
+    result = await runner.run(api=api_common, channel=channel, message=priv_msg())
+    assert result == 'hello'
+
+
+async def test_runner_async_function(api_common: TwitchApiCommon, channel: Channel):
+    async def async_func():
+        return 'world'
+
+    runner = CommandRunner(async_func, global_cooldown=None, user_cooldown=None)
+    result = await runner.run(api=api_common, channel=channel, message=priv_msg())
+    assert result == 'world'
+
+
+async def test_runner_validates_signature():
+    def invalid_function(never):
+        return str(never)
+
+    try:
+        runner = CommandRunner(invalid_function, global_cooldown=None, user_cooldown=None)
+    except TypeError as e:
+        name = 'test_runner_validates_signature.<locals>.invalid_function'
+        assert e.args[0] == f'Unexpected required keyword parameter in <{name}>: \'never\''
+    else:
+        assert False, runner
+
+
+async def test_runner_last_runs_not_set_without_cooldown(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=None, user_cooldown=None)
+    await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    assert runner._last_run is None
+    assert runner._last_run_for_user == dict()
+
+
+async def test_runner_global_cooldown_allows_when_elapsed(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=1, user_cooldown=None)
+    runner._last_run = time.monotonic() - 2
+    await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    assert time.monotonic() - runner._last_run < 0.1
+    assert runner._last_run_for_user == dict()
+
+
+async def test_runner_global_cooldown_raises_exception_when_not_elapsed(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=2, user_cooldown=None)
+    global_last_run = time.monotonic() - 1
+    user_last_run = time.monotonic() - 2
+    runner._last_run = global_last_run
+    runner._last_run_for_user['123'] = user_last_run
+    try:
+        await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    except CooldownNotElapsed as e:
+        assert isinstance(e, GlobalCooldownNotElapsed)
+        assert 0.9 < e.remaining < 1.1
+        assert runner._last_run == global_last_run
+        assert runner._last_run_for_user['123'] == user_last_run
+    else:
+        assert False, 'Not raised'
+
+
+async def test_runner_user_cooldown_allows_when_elapsed(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=None, user_cooldown=1)
+    runner._last_run_for_user['123'] = time.monotonic() - 2
+    await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    assert time.monotonic() - runner._last_run_for_user['123'] < 0.1
+    assert runner._last_run is None
+
+
+async def test_runner_user_cooldown_raises_exception_when_not_elapsed(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=None, user_cooldown=2)
+    user_last_run = time.monotonic() - 1
+    global_last_run = time.monotonic() - 2
+    runner._last_run = global_last_run
+    runner._last_run_for_user['123'] = user_last_run
+    try:
+        await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    except CooldownNotElapsed as e:
+        assert isinstance(e, UserCooldownNotElapsed)
+        assert 0.9 < e.remaining < 1.1
+        assert runner._last_run_for_user['123'] == user_last_run
+        assert runner._last_run == global_last_run
+    else:
+        assert False, 'Not raised'
+
+
+async def test_runner_populates_both_times_with_both_cooldowns(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=1, user_cooldown=1)
+    runner._last_run_for_user['123'] = time.monotonic() - 2
+    await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    post_run = time.monotonic()
+    assert post_run - runner._last_run_for_user['123'] < 0.1
+    assert runner._last_run is not None
+    assert post_run - runner._last_run < 0.1
+
+
+async def test_runner_user_cooldown_beats_global_cooldown(api_common: TwitchApiCommon, channel: Channel):
+    runner = CommandRunner(lambda: None, global_cooldown=2, user_cooldown=4)
+    last_run = time.monotonic() - 1
+    runner._last_run = last_run
+    runner._last_run_for_user['123'] = last_run
+    try:
+        await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
+    except CooldownNotElapsed as e:
+        assert isinstance(e, UserCooldownNotElapsed)
+        assert 2.9 < e.remaining < 3.1
+        assert runner._last_run_for_user['123'] == last_run
+        assert runner._last_run == last_run
+    else:
+        assert False, 'Not raised'
+
+
 def test_registry():
     async def _command_one():
         return ''
@@ -253,8 +369,8 @@ def test_registry():
         return ''
 
     registry = CommandRegistry()
-    registry[AndTrigger()] = CommandRunner(_command_one)
-    registry[AndTrigger()] = CommandRunner(_command_two)
+    registry[AndTrigger()] = CommandRunner(_command_one, global_cooldown=None, user_cooldown=None)
+    registry[AndTrigger()] = CommandRunner(_command_two, global_cooldown=None, user_cooldown=None)
     assert len(registry) == 1
     assert list(registry) == [AndTrigger()]
     assert registry[AndTrigger()]._command_func is _command_two
@@ -278,9 +394,9 @@ async def test_registry_all(channel: Channel):
         return ''
 
     registry = CommandRegistry()
-    registry[FirstWordTrigger('one')] = CommandRunner(_command_one)
-    registry[FirstWordTrigger('two')] = CommandRunner(_command_two)
-    registry[SenderIsModTrigger()] = CommandRunner(_command_three)
+    registry[FirstWordTrigger('one')] = CommandRunner(_command_one, global_cooldown=None, user_cooldown=None)
+    registry[FirstWordTrigger('two')] = CommandRunner(_command_two, global_cooldown=None, user_cooldown=None)
+    registry[SenderIsModTrigger()] = CommandRunner(_command_three, global_cooldown=None, user_cooldown=None)
     commands = await registry.all(priv_msg(handle_able_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)), channel)
     assert [r._command_func for r in commands] == [_command_one, _command_three]
 
@@ -296,7 +412,7 @@ def test_registry_decorator():
         return ''
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(FirstWordTrigger('one'))
+    wrapper = registry.decorator(FirstWordTrigger('one'), global_cooldown=None, user_cooldown=None)
     result = wrapper(_command)
     assert result is _command
     assert registry[FirstWordTrigger('one')]._command_func is result
@@ -307,7 +423,7 @@ def test_registry_decorator_with_sync():
         return ''
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(FirstWordTrigger('three'))
+    wrapper = registry.decorator(FirstWordTrigger('three'), global_cooldown=None, user_cooldown=None)
     result = wrapper(_command)
     assert result is _command
     registered = registry[FirstWordTrigger('three')]
@@ -320,7 +436,7 @@ def test_registry_decorator_with_async():
         return ''
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(FirstWordTrigger('three'))
+    wrapper = registry.decorator(FirstWordTrigger('three'), global_cooldown=None, user_cooldown=None)
     result = wrapper(_command)
     assert result is _command
     registered = registry[FirstWordTrigger('three')]
@@ -333,7 +449,7 @@ def test_registry_rejects_func():
         return str(extra)
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(AndTrigger())
+    wrapper = registry.decorator(AndTrigger(), global_cooldown=None, user_cooldown=None)
     try:
         result = wrapper(_command)
     except TypeError as e:
@@ -357,7 +473,7 @@ def _command(a, /):
         _command = locals_['_command']
 
         registry = CommandRegistry()
-        wrapper = registry.decorator(AndTrigger())
+        wrapper = registry.decorator(AndTrigger(), global_cooldown=None, user_cooldown=None)
         try:
             result = wrapper(_command)
         except TypeError as e:
@@ -366,12 +482,12 @@ def _command(a, /):
             assert False, result
 
 
-async def test_registry_decorator_with_factory():
+async def test_registry_decorator_with_factory(api_common: TwitchApiCommon, channel: Channel):
     def factory(callback: RegisterAbleFunc, callback_accepts: List[str]) -> RegisterAbleFunc:
         assert callback_accepts == ['one']
 
         def inner(message):
-            return callback(one=message)
+            return callback(one=message.tags.user_id)
 
         return inner
 
@@ -379,22 +495,29 @@ async def test_registry_decorator_with_factory():
         return str(one) + two
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(AndTrigger(), target_keywords=['one', 'three'], command_factory=factory)
+    wrapper = registry.decorator(
+        AndTrigger(),
+        global_cooldown=None,
+        user_cooldown=None,
+        target_keywords=['one', 'three'],
+        command_factory=factory,
+    )
     result = wrapper(_command)
     assert result is _command
     runner = registry[AndTrigger()]
     assert 'message' in runner._func_keywords
     assert 'api' not in runner._func_keywords
-    run_result = await registry[AndTrigger()].run(api=None, channel=None, message='1')  # type: ignore
+    message_ = priv_msg(tags_kwargs=dict(user_id='1'))
+    run_result = await registry[AndTrigger()].run(api=api_common, channel=channel, message=message_)
     assert run_result == '12'
 
 
-async def test_registry_decorator_async_with_factory():
+async def test_registry_decorator_async_with_factory(api_common: TwitchApiCommon, channel: Channel):
     def factory(callback: RegisterAbleFunc, callback_accepts: List[str]) -> RegisterAbleFunc:
         assert callback_accepts == ['one']
 
-        def inner(api):
-            return callback(one=api)
+        def inner(message):
+            return callback(one=message.message)
 
         return inner
 
@@ -402,13 +525,16 @@ async def test_registry_decorator_async_with_factory():
         return str(one) + two
 
     registry = CommandRegistry()
-    wrapper = registry.decorator(AndTrigger(), target_keywords=['one', 'five'], command_factory=factory)
+    wrapper = registry.decorator(
+        AndTrigger(), global_cooldown=None, user_cooldown=None, target_keywords=['one', 'five'], command_factory=factory
+    )
     result = wrapper(_command)
     assert result is _command
     runner = registry[AndTrigger()]
-    assert 'api' in runner._func_keywords
-    assert 'message' not in runner._func_keywords
-    run_result = await registry[AndTrigger()].run(api='1', channel=None, message=None)  # type: ignore
+    assert 'api' not in runner._func_keywords
+    assert 'message' in runner._func_keywords
+    message_ = priv_msg(handle_able_kwargs=dict(message='1'))
+    run_result = await registry[AndTrigger()].run(api=api_common, channel=channel, message=message_)
     assert run_result == '12'
 
 
@@ -423,10 +549,12 @@ async def test_registry_find(channel: Channel):
         return ''
 
     registry = CommandRegistry()
-    registry[FirstWordTrigger('one')] = CommandRunner(_one)
-    registry[FirstWordTrigger('two')] = CommandRunner(_two)
-    registry[SenderIsModTrigger()] = CommandRunner(_three)
-    command = await registry.find(priv_msg(handle_able_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)), channel)
+    registry[FirstWordTrigger('three')] = CommandRunner(_one, global_cooldown=None, user_cooldown=None)
+    registry[FirstWordTrigger('four')] = CommandRunner(_two, global_cooldown=None, user_cooldown=None)
+    registry[SenderIsModTrigger()] = CommandRunner(_three, global_cooldown=None, user_cooldown=None)
+    command = await registry.find(
+        priv_msg(handle_able_kwargs=dict(message='three'), tags_kwargs=dict(mod=True)), channel
+    )
     assert command is not None
     assert command._command_func is _one
 

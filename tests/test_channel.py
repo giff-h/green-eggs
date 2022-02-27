@@ -53,7 +53,7 @@ async def test_check_for_links_deletes_message(api_common: TwitchApiCommon, chan
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     assert await channel.check_for_links(
         priv_msg(
@@ -77,7 +77,7 @@ async def test_check_for_links_times_out_sender(api_common: TwitchApiCommon, cha
     mocker.patch(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.TIMEOUT_FLAT
     assert await channel.check_for_links(
         priv_msg(
@@ -100,7 +100,7 @@ async def test_check_for_links_sends_no_message_after_if_blank(
     mocker.patch(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_purge_message_after_action = ''
     assert await channel.check_for_links(
@@ -124,7 +124,7 @@ async def test_check_for_links_allows_permitted(api_common: TwitchApiCommon, cha
         pass
 
     channel._permit_cache['sender'] = asyncio.create_task(permit_task())
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
@@ -149,7 +149,7 @@ async def test_check_for_links_allows_permitted_after_message_without_link(
         pass
 
     channel._permit_cache['sender'] = asyncio.create_task(permit_task())
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
@@ -180,7 +180,7 @@ async def test_check_for_links_allows_vip_by_default(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     assert not await channel.check_for_links(
         priv_msg(
             handle_able_kwargs=dict(message='Go to youtube.com'),
@@ -203,7 +203,7 @@ async def test_check_for_links_allows_subscriber_if_told_to(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
@@ -232,7 +232,7 @@ async def test_check_for_links_allows_subscriber_if_told_to_with_api(
         'green_eggs.api.direct.TwitchApiDirect.check_user_subscription',
         return_value=coroutine_result_value(dict(data=[dict(tier='1')])),
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
@@ -255,7 +255,7 @@ async def test_check_for_links_allows_subbed_vip_if_config_allows_sub_not_vip(
     mocker.patch(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
@@ -280,7 +280,7 @@ async def test_check_for_links_allows_subscriber_if_config_allows_subs_and_vip(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_allow_user_condition = (
         LinkAllowUserConditions.USER_VIP | LinkAllowUserConditions.USER_SUBSCRIBED
     )
@@ -307,7 +307,7 @@ async def test_check_for_links_deletes_vip_if_told_by_default(
     mocker.patch(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert await channel.check_for_links(
@@ -327,7 +327,7 @@ async def test_check_for_links_allows_moderator_always(
     api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture
 ):
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
@@ -350,7 +350,7 @@ async def test_check_for_links_allows_moderator_checks_api(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators',
         return_value=coroutine_result_value(dict(data=[dict(user_id='mod-id')])),
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
@@ -369,7 +369,7 @@ async def test_check_for_links_allows_valid_link_format(
     api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture
 ):
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_target_conditions = [dict(domain='clips.twitch.tv')]
     assert not await channel.check_for_links(
@@ -391,7 +391,7 @@ async def test_check_for_links_unhandled_link_purge_action(
     mocker.patch(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = 'THIS WILL NEVER BE A PURGE ACTION'  # type: ignore[assignment]
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     try:
@@ -409,7 +409,7 @@ async def test_check_for_links_allows_valid_link_format_and_purges_invalid(
         'green_eggs.api.direct.TwitchApiDirect.get_moderators', return_value=coroutine_result_value(dict(data=[]))
     )
     mocker.patch('aiologger.Logger.debug')
-    channel._config.purge_links = True
+    channel._config.should_purge_links = True
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     channel._config.link_allow_target_conditions = [dict(domain='clips.twitch.tv')]
     assert await channel.check_for_links(
