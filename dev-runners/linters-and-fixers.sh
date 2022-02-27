@@ -3,7 +3,7 @@ set -e
 
 # Establish context first
 if [ "$0" != "-bash" ]; then
-  local_lint_clean_test () {
+  local_lint_clean_test() {
     poetry check
     poetry run stubgen -p green_eggs -o stubs
     poetry run docformatter -i -r --wrap-summaries 120 --wrap-descriptions 120 --pre-summary-newline --make-summary-multi-line .
@@ -11,11 +11,14 @@ if [ "$0" != "-bash" ]; then
     poetry run black .
     poetry run mypy .
 
-    rm -rf htmlcov/
+    if ! command -v pyenv; then
+      PATH="$HOME/.pyenv/bin:$PATH"
+    fi
+
     poetry run nox -s tests_pyenv
   }
 
-  pre_commit_stash_and_clean () {
+  pre_commit_stash_and_clean() {
     if [ "$(git status --porcelain=v1 | grep '^.[^ ]' | wc -l)" = "0" ]; then
       # All changes are in index, no need to stash
       local_lint_clean_test

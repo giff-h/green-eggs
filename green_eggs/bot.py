@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import datetime
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from aiologger import Logger
 
@@ -12,8 +12,11 @@ from green_eggs.client import TwitchChatClient
 from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
 from green_eggs.config import Config
 from green_eggs.data_types import PrivMsg
+from green_eggs.exceptions import CooldownNotElapsed
 from green_eggs.types import RegisterAbleFunc
 from green_eggs.utils import catch_all
+
+_unset: Any = object()
 
 
 async def _main_handler(
@@ -21,6 +24,7 @@ async def _main_handler(
     api: TwitchApiCommon,
     channel: Channel,
     commands: CommandRegistry,
+    config: Config,
     logger: Logger,
     raw: str,
     default_timestamp: datetime.datetime,
@@ -38,24 +42,45 @@ async def _main_handler(
         return None
 
     if isinstance(handle_able, dt.HasTags):
-        if len(handle_able.tags.unhandled):
-            type_name = type(handle_able.tags).__qualname__
+        if handle_able.tags.unhandled:
+            type_name = type(handle_able).__qualname__
             unhandled = handle_able.tags.unhandled
-            logger.warning(f'Unhandled on {type_name}: {unhandled!r}')
+            logger.warning(f'Unhandled tags on {type_name}: {unhandled!r}')
         if isinstance(handle_able.tags, dt.UserNoticeTags):
-            if len(handle_able.tags.msg_params.unhandled):
-                type_name = type(handle_able.tags.msg_params).__qualname__
+            if handle_able.tags.msg_params.unhandled:
+                type_name = type(handle_able).__qualname__
                 unhandled = handle_able.tags.msg_params.unhandled
-                logger.warning(f'Unhandled on {type_name}: {unhandled!r}')
+                logger.warning(f'Unhandled msg params on {type_name}: {unhandled!r}')
+        if isinstance(handle_able.tags, dt.UserBaseTags):
+            if handle_able.tags.badges.unhandled:
+                type_name = type(handle_able).__qualname__
+                unhandled = handle_able.tags.badges.unhandled
+                logger.warning(f'Unhandled badges on {type_name}: {unhandled!r}')
+        if isinstance(handle_able.tags, dt.UserChatBaseTags):
+            if handle_able.tags.badge_info.unhandled:
+                type_name = type(handle_able).__qualname__
+                unhandled = handle_able.tags.badge_info.unhandled
+                logger.warning(f'Unhandled badge info on {type_name}: {unhandled!r}')
 
     if isinstance(handle_able, dt.PrivMsg):
         channel.handle_message(handle_able)
         if not await channel.check_for_links(handle_able):
             command = await commands.find(handle_able, channel)
             if command is not None:
-                result = await command.run(api=api, channel=channel, message=handle_able)
-                if isinstance(result, str):
-                    await channel.send(result)
+                try:
+                    result = await command.run(api=api, channel=channel, message=handle_able)
+                except CooldownNotElapsed as e:
+                    if config.should_notify_if_cooldown_has_not_elapsed:
+                        remaining = f'{e.remaining:.1f}'.rstrip('0').rstrip('.')
+                        plural = '' if remaining == '1' else 's'
+                        response = (
+                            f'@{handle_able.tags.display_name} - '
+                            f'That command is on cooldown for {remaining} more second{plural}'
+                        )
+                        await channel.send(response)
+                else:
+                    if isinstance(result, str):
+                        await channel.send(result)
 
     elif isinstance(handle_able, dt.JoinPart):
         channel.handle_join_part(handle_able)
@@ -99,8 +124,17 @@ class ChatBot:
         self._commands = CommandRegistry()
         self._config = Config.from_python(**(config or dict()))
 
-        if self._config.purge_links:
+        if self._config.should_purge_links:
             self._register_permit_command()
+
+    def _get_cooldowns(
+        self, global_cooldown: Optional[int], user_cooldown: Optional[int]
+    ) -> Tuple[Optional[int], Optional[int]]:
+        if global_cooldown is _unset:
+            global_cooldown = self._config.default_command_global_cooldown
+        if user_cooldown is _unset:
+            user_cooldown = self._config.default_command_user_cooldown
+        return global_cooldown, user_cooldown
 
     def _register_permit_command(self):
         def permit(channel: Channel, message: PrivMsg):
@@ -117,15 +151,25 @@ class ChatBot:
             return f'@{message.tags.display_name} - Who do I permit exactly?'
 
         trigger = FirstWordTrigger(self._config.link_permit_command_invoke) & SenderIsModTrigger()
-        self._commands.decorator(trigger)(permit)
+        self._commands.add(trigger, permit, global_cooldown=None, user_cooldown=None)
 
-    def register_basic_commands(self, commands: Mapping[str, str], *, case_sensitive=False):
+    def register_basic_commands(
+        self,
+        commands: Mapping[str, str],
+        *,
+        case_sensitive=False,
+        global_cooldown: Optional[int] = _unset,
+        user_cooldown: Optional[int] = _unset,
+    ):
         """
         Register basic message response commands.
 
         :param commands: Mapping of invoke to response strings
         :param bool case_sensitive: Whether the command should trigger on exact case or any case
+        :param global_cooldown: Optional global cooldown for these responses to override config
+        :param user_cooldown: Optional user cooldown for these responses to override config
         """
+        global_cooldown, user_cooldown = self._get_cooldowns(global_cooldown, user_cooldown)
 
         # This factory is necessary to keep the namespace of `output` from getting overwritten in the loop
         def factory(output):
@@ -136,17 +180,27 @@ class ChatBot:
 
         for invoke, response in commands.items():
             trigger = FirstWordTrigger(invoke, case_sensitive)
-            self._commands.add(trigger, factory(response))
+            self._commands.add(trigger, factory(response), global_cooldown=global_cooldown, user_cooldown=user_cooldown)
 
-    def register_caster_command(self, invoke: str, *, case_sensitive=False):
+    def register_caster_command(
+        self,
+        invoke: str,
+        *,
+        case_sensitive=False,
+        global_cooldown: Optional[int] = _unset,
+        user_cooldown: Optional[int] = _unset,
+    ):
         """
         Decorator to register a function as a caster command handler.
 
         :param str invoke: The command part in the chat message
         :param bool case_sensitive: Whether the command should trigger on exact case or any case
+        :param global_cooldown: Optional global cooldown for these responses to override config
+        :param user_cooldown: Optional user cooldown for these responses to override config
         :return: The decorator
         """
         trigger = FirstWordTrigger(invoke, case_sensitive) & SenderIsModTrigger()
+        global_cooldown, user_cooldown = self._get_cooldowns(global_cooldown, user_cooldown)
 
         def factory(callback: RegisterAbleFunc, callback_keywords: List[str]) -> RegisterAbleFunc:
             async def command(api: TwitchApiCommon, channel: Channel, message: dt.PrivMsg) -> Optional[str]:
@@ -191,6 +245,8 @@ class ChatBot:
 
         return self._commands.decorator(
             trigger,
+            global_cooldown=global_cooldown,
+            user_cooldown=user_cooldown,
             target_keywords=[
                 'user_id',
                 'username',
@@ -204,16 +260,26 @@ class ChatBot:
             command_factory=factory,
         )
 
-    def register_command(self, invoke: str, *, case_sensitive=False):
+    def register_command(
+        self,
+        invoke: str,
+        *,
+        case_sensitive=False,
+        global_cooldown: Optional[int] = _unset,
+        user_cooldown: Optional[int] = _unset,
+    ):
         """
         Decorator to register a function as a command handler.
 
         :param str invoke: The command part in the chat message
         :param bool case_sensitive: Whether the command should trigger on exact case or any case
+        :param global_cooldown: Optional global cooldown for these responses to override config
+        :param user_cooldown: Optional user cooldown for these responses to override config
         :return: The decorator
         """
         trigger = FirstWordTrigger(invoke, case_sensitive)
-        return self._commands.decorator(trigger)
+        global_cooldown, user_cooldown = self._get_cooldowns(global_cooldown, user_cooldown)
+        return self._commands.decorator(trigger, global_cooldown=global_cooldown, user_cooldown=user_cooldown)
 
     def run_sync(self, *, username: str, token: str, client_id: str):  # pragma: no cover
         """
@@ -258,6 +324,7 @@ class ChatBot:
                             api=api,
                             channel=channel,
                             commands=self._commands,
+                            config=self._config,
                             logger=logger,
                             raw=raw,
                             default_timestamp=default_timestamp,

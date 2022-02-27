@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 import enum
 import re
-from typing import Any, Dict, List, Pattern, Type, Union
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Type, Union
 import urllib.parse
 
 
@@ -20,7 +20,7 @@ class LinkAllowUserConditions(enum.IntFlag):
 @dataclass
 class Config:
     # Links
-    purge_links: bool = False
+    should_purge_links: bool = False
     link_purge_action: LinkPurgeActions = LinkPurgeActions.DELETE
     link_purge_timeout_duration: int = 1
     link_purge_message_after_action: str = 'Please no posting links without permission'
@@ -28,6 +28,11 @@ class Config:
     link_allow_target_conditions: List[Dict[str, Union[str, Pattern[str]]]] = field(default_factory=list)
     link_permit_command_invoke: str = '!permit'
     link_permit_duration: int = 60
+
+    # Cooldowns
+    default_command_user_cooldown: Optional[int] = None
+    default_command_global_cooldown: Optional[int] = None
+    should_notify_if_cooldown_has_not_elapsed: bool = True
 
     @staticmethod
     def validate_enum_member(kwargs: Dict[str, Any], key: str, enum_class: Type[enum.Enum], container_name: str):
@@ -42,15 +47,19 @@ class Config:
                 kwargs[key] = value
 
     @staticmethod
-    def validate_instance(kwargs: Dict[str, Any], key: str, klass: Type):
+    def validate_instance(kwargs: Dict[str, Any], key: str, klass: Union[Type, Tuple[Type, ...]]):
         if key in kwargs:
             value = kwargs[key]
             if not isinstance(value, klass):
-                message = f'Invalid value for {key}: {value!r}. Must be an instance of {klass.__qualname__}'
+                if isinstance(klass, tuple):
+                    instance_name = ' or '.join(t.__qualname__ for t in klass)
+                else:
+                    instance_name = klass.__qualname__
+                message = f'Invalid value for {key}: {value!r}. Must be an instance of {instance_name}'
                 raise ValueError(message)
 
     @classmethod
-    def validate_config(cls, kwargs: Dict[str, Any]):
+    def _validate_link_purge_config(cls, kwargs: Dict[str, Any]):
         cls.validate_enum_member(kwargs, 'link_purge_action', LinkPurgeActions, 'LinkPurgeActions')
         cls.validate_enum_member(
             kwargs, 'link_allow_user_condition', LinkAllowUserConditions, 'LinkAllowUserConditions'
@@ -61,6 +70,16 @@ class Config:
         cls.validate_instance(kwargs, 'link_allow_target_conditions', list)
         cls.validate_instance(kwargs, 'link_permit_command_invoke', str)
         cls.validate_instance(kwargs, 'link_permit_duration', int)
+
+    @classmethod
+    def _validate_cooldown_config(cls, kwargs: Dict[str, Any]):
+        cls.validate_instance(kwargs, "default_command_user_cooldown", (int, type(None)))
+        cls.validate_instance(kwargs, "default_command_global_cooldown", (int, type(None)))
+
+    @classmethod
+    def validate_config(cls, kwargs: Dict[str, Any]):
+        cls._validate_link_purge_config(kwargs)
+        cls._validate_cooldown_config(kwargs)
 
         if 'link_allow_target_conditions' in kwargs:
             for condition in kwargs['link_allow_target_conditions']:
