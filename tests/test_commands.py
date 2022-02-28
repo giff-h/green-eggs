@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import asyncio
 import inspect
 import sys
 import time
@@ -16,55 +15,12 @@ from green_eggs.commands import (
     SenderIsModTrigger,
     SenderIsSubscribedTrigger,
 )
-from green_eggs.commands.triggers import async_all, async_any
+from green_eggs.commands.triggers import InvertedTrigger
 from green_eggs.exceptions import CooldownNotElapsed, GlobalCooldownNotElapsed, UserCooldownNotElapsed
 from green_eggs.types import RegisterAbleFunc
 from tests import response_context
 from tests.fixtures import *  # noqa
 from tests.utils.data_types import priv_msg
-
-# ANY AND ALL
-
-
-async def test_async_all_empty():
-    assert await async_all(await nothing for nothing in [])  # type: ignore[arg-type]
-
-
-async def test_async_all_one_false():
-    true_future = asyncio.Future()
-    true_future.set_result(True)
-    false_future = asyncio.Future()
-    false_future.set_result(False)
-    assert not await async_all(await future for future in [true_future, false_future])  # type: ignore[arg-type]
-
-
-async def test_async_all_none_false():
-    future_one = asyncio.Future()
-    future_one.set_result(True)
-    future_two = asyncio.Future()
-    future_two.set_result(True)
-    assert await async_all(await future for future in [future_one, future_two])  # type: ignore[arg-type]
-
-
-async def test_async_any_empty():
-    assert not await async_any(await nothing for nothing in [])  # type: ignore[arg-type]
-
-
-async def test_async_any_one_false():
-    true_future = asyncio.Future()
-    true_future.set_result(True)
-    false_future = asyncio.Future()
-    false_future.set_result(False)
-    assert await async_any(await future for future in [true_future, false_future])  # type: ignore[arg-type]
-
-
-async def test_async_any_none_false():
-    future_one = asyncio.Future()
-    future_one.set_result(True)
-    future_two = asyncio.Future()
-    future_two.set_result(True)
-    assert await async_any(await future for future in [future_one, future_two])  # type: ignore[arg-type]
-
 
 # TRIGGERS
 
@@ -242,6 +198,36 @@ async def test_or_trigger_check(channel: Channel):
     trigger = FirstWordTrigger('a') | SenderIsModTrigger()
     assert await trigger.check(a_not_mod, channel)
     assert await trigger.check(b_is_mod, channel)
+
+
+async def test_inverted_trigger_created_from_tilde():
+    trigger = ~FirstWordTrigger('a')
+    assert isinstance(trigger, InvertedTrigger)
+    assert trigger.inner == FirstWordTrigger('a')
+
+
+async def test_inverted_trigger_negates_outcome(channel: Channel):
+    trigger = FirstWordTrigger('first')
+    inverted = ~trigger
+    message_first = priv_msg(handle_able_kwargs=dict(message='first word', where='channel_user'))
+    assert await trigger.check(message_first, channel)
+    assert not await inverted.check(message_first, channel)
+    message_second = priv_msg(handle_able_kwargs=dict(message='second word', where='channel_user'))
+    assert not await trigger.check(message_second, channel)
+    assert await inverted.check(message_second, channel)
+
+
+async def test_inverted_twice_returns_original():
+    trigger = SenderIsModTrigger()
+    inverted = ~trigger
+    twice = ~inverted
+    assert twice is trigger
+
+
+async def test_inverted_hash_depends_on_inner():
+    trigger_one = FirstWordTrigger('hello')
+    trigger_two = SenderIsModTrigger()
+    assert hash(~trigger_one) != hash(~trigger_two)
 
 
 # REGISTRY
