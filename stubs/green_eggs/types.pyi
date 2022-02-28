@@ -1,3 +1,3 @@
 from typing import Awaitable, Callable, Optional, Union
 
-RegisterAbleFunc = Callable[..., Union[Optional[str], Awaitable[Optional[str]]]]
+RegisterAbleFunc = Union[Callable[..., Optional[str]], Callable[..., Awaitable[Optional[str]]]]

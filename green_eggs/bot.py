@@ -4,6 +4,7 @@ import datetime
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from aiologger import Logger
+import asyncstdlib as a
 
 from green_eggs import data_types as dt
 from green_eggs.api import TwitchApiCommon
@@ -235,11 +236,7 @@ class ChatBot:
                 if 'user_link' in callback_keywords:
                     callback_kwargs['user_link'] = shoutout_info.user_link
 
-                output = callback(**callback_kwargs)
-                if output is None or isinstance(output, str):
-                    return output
-                else:
-                    return await output
+                return await a.sync(callback)(**callback_kwargs)  # type: ignore[return-value]
 
             return command
 

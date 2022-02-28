@@ -101,6 +101,21 @@ python-versions = ">=3.6"
 typing-extensions = {version = ">=3.6.5", markers = "python_version < \"3.8\""}
 
 [[package]]
+name = "asyncstdlib"
+version = "3.10.3"
+description = "The missing async toolbox"
+category = "main"
+optional = false
+python-versions = "~=3.6"
+
+[package.dependencies]
+typing_extensions = {version = "*", markers = "python_version < \"3.8\""}
+
+[package.extras]
+doc = ["sphinx", "sphinxcontrib-trio"]
+test = ["pytest", "flake8", "flake8-bugbear", "black", "coverage", "pytest-cov", "flake8-2020", "mypy"]
+
+[[package]]
 name = "asynctest"
 version = "0.13.0"
 description = "Enhance the standard unittest package with features for testing asyncio libraries"
@@ -813,7 +828,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "0b0c4384d9911508ea2e77077ffba0fc50159f90dec8cb693dc3b9ef9dda7b16"
+content-hash = "a98be0caa9c5ac2ef30e9eda59725ee45ddcc5c9e96acca7cce686c846f4a241"
 
 [metadata.files]
 aiodns = [
@@ -916,6 +931,10 @@ argcomplete = [
 async-timeout = [
     {file = "async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
     {file = "async_timeout-4.0.2-py3-none-any.whl", hash = "sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c"},
+]
+asyncstdlib = [
+    {file = "asyncstdlib-3.10.3-py2.py3-none-any.whl", hash = "sha256:35d34eca050b847fe45cbb10a07a55c15ef1cb43e59d4abfcbdebe90df30a6f6"},
+    {file = "asyncstdlib-3.10.3.tar.gz", hash = "sha256:4d836c65769761a47795667ed72f3de6cf4a25e480959f75fd91eb8eb5edc640"},
 ]
 asynctest = [
     {file = "asynctest-0.13.0-py3-none-any.whl", hash = "sha256:5da6118a7e6d6b54d83a8f7197769d046922a44d2a99c21382f0a6e4fadae676"},

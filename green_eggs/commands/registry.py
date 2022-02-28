@@ -2,6 +2,8 @@
 import time
 from typing import AsyncIterator, Callable, ClassVar, Dict, Iterator, List, MutableMapping, Optional
 
+import asyncstdlib as a
+
 from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.commands.triggers import CommandTrigger
@@ -63,11 +65,7 @@ class CommandRunner:
         """
         self._check_cooldown_elapsed(message.tags.user_id)
         kwargs = self._filter_func_keywords(api=api, channel=channel, message=message)
-        output = self._command_func(**kwargs)
-        if output is None or isinstance(output, str):
-            return output
-        else:
-            return await output
+        return await a.sync(self._command_func)(**kwargs)  # type: ignore[return-value]
 
 
 class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):

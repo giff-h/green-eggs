@@ -1,24 +1,12 @@
 # -*- coding: utf-8 -*-
 import abc
 from collections.abc import Hashable
-from typing import Any, AsyncGenerator, Iterable, Iterator, List
+from typing import Iterable, Iterator, List
+
+import asyncstdlib as a
 
 from green_eggs.channel import Channel
 from green_eggs.data_types import PrivMsg
-
-
-async def async_all(async_generator: AsyncGenerator[Any, None]) -> bool:
-    async for v in async_generator:
-        if not v:
-            return False
-    return True
-
-
-async def async_any(async_generator: AsyncGenerator[Any, None]) -> bool:
-    async for v in async_generator:
-        if v:
-            return True
-    return False
 
 
 class CommandTrigger(Hashable, abc.ABC):
@@ -28,12 +16,29 @@ class CommandTrigger(Hashable, abc.ABC):
     def __eq__(self, other) -> bool:
         return type(self) is type(other) and hash(self) == hash(other)
 
+    def __invert__(self) -> 'CommandTrigger':
+        return InvertedTrigger(self)
+
     def __or__(self, other: 'CommandTrigger') -> 'OrTrigger':
         return OrTrigger(self, other)
 
     @abc.abstractmethod
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
         raise NotImplementedError()
+
+
+class InvertedTrigger(CommandTrigger):
+    def __init__(self, inner: CommandTrigger):
+        self.inner = inner
+
+    def __hash__(self) -> int:
+        return hash((type(self), self.inner))
+
+    def __invert__(self) -> CommandTrigger:
+        return self.inner
+
+    async def check(self, message: PrivMsg, channel: Channel) -> bool:
+        return not await self.inner.check(message, channel)
 
 
 class LogicTrigger(CommandTrigger, abc.ABC):
@@ -55,7 +60,7 @@ class LogicTrigger(CommandTrigger, abc.ABC):
         self._triggers: List[CommandTrigger] = sorted(set(self._flatten(triggers)), key=hash)
 
     def __hash__(self) -> int:
-        return hash((type(self), tuple(self._triggers)))
+        return hash((type(self), *self._triggers))
 
 
 class AndTrigger(LogicTrigger):
@@ -67,8 +72,7 @@ class AndTrigger(LogicTrigger):
     """
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        # noinspection PyTypeChecker
-        return bool(len(self._triggers)) and await async_all(  # type: ignore[arg-type]
+        return bool(len(self._triggers)) and await a.all(
             await trigger.check(message, channel) for trigger in self._triggers
         )
 
@@ -82,8 +86,7 @@ class OrTrigger(LogicTrigger):
     """
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
-        # noinspection PyTypeChecker
-        return bool(len(self._triggers)) and await async_any(  # type: ignore[arg-type]
+        return bool(len(self._triggers)) and await a.any(
             await trigger.check(message, channel) for trigger in self._triggers
         )
 
@@ -114,7 +117,7 @@ class SenderIsModTrigger(CommandTrigger):
     """
 
     def __hash__(self) -> int:
-        return hash((type(self),))
+        return hash(type(self))
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
         return message.is_sender_moderator or await channel.is_user_moderator(message.tags.user_id)
@@ -126,7 +129,7 @@ class SenderIsSubscribedTrigger(CommandTrigger):
     """
 
     def __hash__(self) -> int:
-        return hash((type(self),))
+        return hash(type(self))
 
     async def check(self, message: PrivMsg, channel: Channel) -> bool:
         return message.is_sender_subscribed or await channel.is_user_subscribed(message.tags.user_id)
