@@ -1,8 +1,8 @@
 Release History
 ===============
 
-Soon™️
------
+0.3.0 (2022-02-27)
+------------------
 
 - Badges or badge info on data object tags from chat are now their own tag-style dataclasses rather than dicts
 - Added the ability to set global and user command cooldowns both in the config for all commands and in the command
