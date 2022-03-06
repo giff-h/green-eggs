@@ -3,8 +3,16 @@ from aiohttp import ClientResponseError
 from pytest_mock import MockerFixture
 
 from green_eggs.api import TwitchApiCommon, TwitchApiDirect
+from green_eggs.api.common import validate_client_id
+from tests import response_context
 from tests.fixtures import *  # noqa
 from tests.utils.compat import coroutine_result_value
+
+
+async def test_validate_client_id(mocker: MockerFixture):
+    mocker.patch('aiohttp.ClientSession.get', return_value=response_context(return_json=dict(client_id='client')))
+    client_id = await validate_client_id('token')
+    assert client_id == 'client'
 
 
 def test_direct(api_common: TwitchApiCommon):

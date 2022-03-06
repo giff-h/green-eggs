@@ -8,6 +8,7 @@ import asyncstdlib as a
 
 from green_eggs import data_types as dt
 from green_eggs.api import TwitchApiCommon
+from green_eggs.api.common import validate_client_id
 from green_eggs.channel import Channel
 from green_eggs.client import TwitchChatClient
 from green_eggs.commands import CommandRegistry, FirstWordTrigger, SenderIsModTrigger
@@ -278,18 +279,28 @@ class ChatBot:
         global_cooldown, user_cooldown = self._get_cooldowns(global_cooldown, user_cooldown)
         return self._commands.decorator(trigger, global_cooldown=global_cooldown, user_cooldown=user_cooldown)
 
-    def run_sync(self, *, username: str, token: str, client_id: str):  # pragma: no cover
+    def run_sync(
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: str = None, api_token: str
+    ):  # pragma: no cover
         """
         Main synchronous blocking function to run the bot after configuring.
 
-        :param username: Login of the bot
-        :param token: Oauth token of the bot
-        :param client_id: Client ID of the bot
+        :param str chat_bot_username: Login of the bot
+        :param str chat_bot_token: Oauth token of the bot
+        :param str api_client_id: Client ID of the API user, optional
+        :param str api_token: Oauth token of the API user
         """
         loop = asyncio.get_event_loop()
         task = None
         try:
-            task = loop.create_task(self.run_async(username=username, token=token, client_id=client_id))
+            task = loop.create_task(
+                self.run_async(
+                    chat_bot_username=chat_bot_username,
+                    chat_bot_token=chat_bot_token,
+                    api_client_id=api_client_id,
+                    api_token=api_token,
+                )
+            )
             loop.run_until_complete(task)
         except KeyboardInterrupt:
             if task:
@@ -298,18 +309,23 @@ class ChatBot:
             pending = asyncio.all_tasks(loop=loop)
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
-    async def run_async(self, *, username: str, token: str, client_id: str):  # pragma: no cover
+    async def run_async(
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: str = None, api_token: str
+    ):  # pragma: no cover
         """
         Main async forever loop to run the bot after configuring.
 
-        :param username: Login of the bot
-        :param token: Oauth token of the bot
-        :param client_id: Client ID of the bot
+        :param str chat_bot_username: Login of the bot
+        :param str chat_bot_token: Oauth token of the bot
+        :param str api_client_id: Client ID of the API user, optional
+        :param str api_token: Oauth token of the API user
         """
         logger = Logger.with_default_handlers(name='green_eggs')
+        if not api_client_id:
+            api_client_id = await validate_client_id(api_token)
 
-        async with TwitchChatClient(username=username, token=token, logger=logger) as chat:
-            async with TwitchApiCommon(client_id=client_id, token=token, logger=logger) as api:
+        async with TwitchChatClient(username=chat_bot_username, token=chat_bot_token, logger=logger) as chat:
+            async with TwitchApiCommon(client_id=api_client_id, token=api_token, logger=logger) as api:
                 await chat.join(self._channel)
                 channel = Channel(login=self._channel, api=api, chat=chat, config=self._config, logger=logger)
 
