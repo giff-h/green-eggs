@@ -469,7 +469,7 @@ if __name__ == '__main__':
     markup = fromstring(source)
     generated_lines = parse_document(markup)
 
-    template = (this_dir / 'api.py.template').read_text()
+    template = (this_dir / 'direct.py.template').read_text()
     full_file = template + '\n'.join(generated_lines) + '\n'
     for misspelled, corrected in spelling_fixes.items():
         full_file = full_file.replace(misspelled, corrected)

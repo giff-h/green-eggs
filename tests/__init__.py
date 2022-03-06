@@ -86,5 +86,5 @@ class MockResponse:
 
 
 @contextlib.asynccontextmanager
-async def response_context(**kwargs):
-    yield MockResponse(**kwargs)
+async def response_context(return_json=None):
+    yield MockResponse(return_json=return_json)

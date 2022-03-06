@@ -25,6 +25,7 @@ class TwitchApiDirect:
     _base_url = 'https://api.twitch.tv/helix/'
 
     def __init__(self, *, client_id: str, token: str, logger: Logger):
+        token = token.lstrip('oauth:')
         headers = {'Client-ID': client_id, 'Authorization': f'Bearer {token}'}
         self._logger: Logger = logger
         self._session: aiohttp.ClientSession = aiohttp.ClientSession(headers=headers)

@@ -3,12 +3,21 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Dict, Optional, Type
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientSession
 from aiologger import Logger
 
 from .direct import TwitchApiDirect
 
-__all__ = ('TwitchApiCommon',)
+__all__ = ('TwitchApiCommon', 'validate_client_id')
+
+
+async def validate_client_id(api_token: str) -> str:
+    api_token = api_token.lstrip('oauth:')
+    async with ClientSession(headers={'Authorization': f'Bearer {api_token}'}) as session:
+        async with session.get('https://id.twitch.tv/oauth2/validate') as response:
+            response.raise_for_status()
+            data = await response.json()
+    return data['client_id']
 
 
 @dataclass

@@ -1,6 +1,7 @@
 from typing import Any, Dict, Mapping, Optional
 
 from green_eggs.api import TwitchApiCommon as TwitchApiCommon
+from green_eggs.api.common import validate_client_id as validate_client_id
 from green_eggs.channel import Channel as Channel
 from green_eggs.client import TwitchChatClient as TwitchChatClient
 from green_eggs.commands import CommandRegistry as CommandRegistry
@@ -38,5 +39,7 @@ class ChatBot:
         global_cooldown: Optional[int] = ...,
         user_cooldown: Optional[int] = ...,
     ): ...
-    def run_sync(self, username: str, token: str, client_id: str): ...
-    async def run_async(self, username: str, token: str, client_id: str): ...
+    def run_sync(self, chat_bot_username: str, chat_bot_token: str, *, api_client_id: str = ..., api_token: str): ...
+    async def run_async(
+        self, chat_bot_username: str, chat_bot_token: str, *, api_client_id: str = ..., api_token: str
+    ): ...

@@ -70,4 +70,4 @@ def caster(display_name: str, user_link: str, game_name: str):
 
 
 if __name__ == '__main__':
-    bot.run_sync(username='bot_username', token='bot token', client_id='bot client id')
+    bot.run_sync(chat_bot_username='bot_username', chat_bot_token='oauth:bot_token', api_token='api_token')

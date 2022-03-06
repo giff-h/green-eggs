@@ -5,6 +5,8 @@ from aiologger import Logger
 
 from .direct import TwitchApiDirect
 
+async def validate_client_id(api_token: str) -> str: ...
+
 class ShoutoutInfo:
     user_id: str
     username: str
