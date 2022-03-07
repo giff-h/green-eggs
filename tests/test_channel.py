@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 
+import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs.api import TwitchApiCommon
@@ -394,12 +395,8 @@ async def test_check_for_links_unhandled_link_purge_action(
     channel._config.should_purge_links = True
     channel._config.link_purge_action = 'THIS WILL NEVER BE A PURGE ACTION'  # type: ignore[assignment]
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
-    try:
+    with pytest.raises(ValueError, match='Unhandled link purge action: \'THIS WILL NEVER BE A PURGE ACTION\''):
         await channel.check_for_links(priv_msg(handle_able_kwargs=dict(message='Go to youtube.com')))
-    except ValueError as e:
-        assert e.args[0] == 'Unhandled link purge action: \'THIS WILL NEVER BE A PURGE ACTION\''
-    else:
-        assert False, 'No exception'
 
 
 async def test_check_for_links_allows_valid_link_format_and_purges_invalid(
@@ -441,12 +438,8 @@ def test_code_353(channel: Channel):
 
 
 def test_code_353_wrong_channel(channel: Channel):
-    try:
+    with pytest.raises(ValueError, match='Channel for channel_user was given a code353 from wrong_channel'):
         channel.handle_code_353(code_353('user1', 'user2', 'another_user', where='wrong_channel'))
-    except ValueError as e:
-        assert e.args[0] == 'Channel for channel_user was given a code353 from wrong_channel'
-    else:
-        assert False
 
 
 def test_join(channel: Channel):
@@ -466,12 +459,8 @@ def test_part(channel: Channel):
 
 
 def test_join_part_wrong_channel(channel: Channel):
-    try:
+    with pytest.raises(ValueError, match='Channel for channel_user was given a join/part from wrong_channel'):
         channel.handle_join_part(join_part(where='wrong_channel'))
-    except ValueError as e:
-        assert e.args[0] == 'Channel for channel_user was given a join/part from wrong_channel'
-    else:
-        assert False
 
 
 def test_message(channel: Channel):
@@ -494,12 +483,8 @@ def test_message_max_five(channel: Channel):
 
 
 def test_message_wrong_channel(channel: Channel):
-    try:
+    with pytest.raises(ValueError, match='Channel for channel_user was given a message from wrong_channel'):
         channel.handle_message(priv_msg(handle_able_kwargs=dict(where='wrong_channel')))
-    except ValueError as e:
-        assert e.args[0] == 'Channel for channel_user was given a message from wrong_channel'
-    else:
-        assert False
 
 
 def test_room_state(channel: Channel):
@@ -510,13 +495,9 @@ def test_room_state(channel: Channel):
 
 
 def test_room_state_wrong_channel(channel: Channel):
-    try:
+    with pytest.raises(ValueError, match='Channel for channel_user was given a room state from wrong_channel'):
         channel.handle_room_state(room_state(handle_able_kwargs=dict(where='wrong_channel')))
-    except ValueError as e:
-        assert e.args[0] == 'Channel for channel_user was given a room state from wrong_channel'
-        assert channel.broadcaster_id == ''
-    else:
-        assert False
+    assert channel.broadcaster_id == ''
 
 
 def test_is_user_in_channel(channel: Channel):
@@ -699,9 +680,5 @@ async def test_send(channel: Channel):
 
 
 async def test_send_too_long(channel: Channel):
-    try:
+    with pytest.raises(ValueError, match='Messages cannot exceed 500 characters'):
         await channel.send('A' * 501)
-    except ValueError as e:
-        assert e.args[0] == 'Messages cannot exceed 500 characters'
-    else:
-        assert False

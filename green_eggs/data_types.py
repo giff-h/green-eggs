@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import abc
 from dataclasses import dataclass, field, fields
 import datetime
 import keyword
@@ -63,7 +62,7 @@ def _bool_of_int_of(inp: str) -> bool:
 
 
 @dataclass(frozen=True)
-class BaseTags(abc.ABC):
+class BaseTags:
     deprecated_fields: ClassVar[List[str]] = [
         'subscriber',
         'turbo',
@@ -100,7 +99,7 @@ class BaseTags(abc.ABC):
 
 
 @dataclass(frozen=True)
-class BaseBadges(BaseTags, abc.ABC):
+class BaseBadges(BaseTags):
     deprecated_fields: ClassVar[List[str]] = []
     pair_list_splitter: ClassVar[str] = ','
     key_value_splitter: ClassVar[str] = '/'
@@ -128,7 +127,7 @@ class BaseBadges(BaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
-class TimestampedBaseTags(BaseTags, abc.ABC):
+class TimestampedBaseTags(BaseTags):
     tmi_sent_ts: datetime.datetime
 
     @classmethod
@@ -244,7 +243,7 @@ class Badges(BaseBadges):
 
 
 @dataclass(frozen=True)
-class UserBaseTags(BaseTags, abc.ABC):
+class UserBaseTags(BaseTags):
     badges: Badges
     color: str
     display_name: str
@@ -281,7 +280,7 @@ class BadgeInfo(BaseBadges):
 
 
 @dataclass(frozen=True)
-class UserChatBaseTags(UserBaseTags, abc.ABC):
+class UserChatBaseTags(UserBaseTags):
     badge_info: BadgeInfo
 
     @classmethod
@@ -304,7 +303,7 @@ class UserChatBaseTags(UserBaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
-class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
+class UserEmoteSetsBaseTags(UserChatBaseTags):
     emote_sets: str
 
     @classmethod
@@ -316,7 +315,7 @@ class UserEmoteSetsBaseTags(UserChatBaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
-class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
+class UserIsModBaseTags(UserChatBaseTags):
     mod: bool
 
     @classmethod
@@ -325,7 +324,7 @@ class UserIsModBaseTags(UserChatBaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
-class UserMessageBaseTags(UserBaseTags, abc.ABC):
+class UserMessageBaseTags(UserBaseTags):
     emotes: str
     user_id: str
 
@@ -335,13 +334,13 @@ class UserMessageBaseTags(UserBaseTags, abc.ABC):
 
 
 @dataclass(frozen=True)
-class UserChatMessageBaseTags(TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags, abc.ABC):
+class UserChatMessageBaseTags(TimestampedBaseTags, UserIsModBaseTags, UserMessageBaseTags):
     id: str
     room_id: str
 
 
 @dataclass(frozen=True)
-class UserSentNoticeBaseTags(BaseTags, abc.ABC):
+class UserSentNoticeBaseTags(BaseTags):
     login: str  # the user who sent the notice
 
 
@@ -609,7 +608,7 @@ class WhisperTags(UserMessageBaseTags):
 
 
 @dataclass(frozen=True)
-class HandleAble(abc.ABC):
+class HandleAble:
     # `default_timestamp` is not from twitch, but is set by the IRC client when the data was received
     default_timestamp: datetime.datetime = field(compare=False)
     raw: str = field(compare=False)
@@ -638,12 +637,12 @@ class HandleAble(abc.ABC):
 
 
 @dataclass(frozen=True)
-class FromUser(HandleAble, abc.ABC):
+class FromUser(HandleAble):
     who: str
 
 
 @dataclass(frozen=True)
-class HasMessage(HandleAble, abc.ABC):
+class HasMessage(HandleAble):
     message: str
 
     @classmethod
@@ -664,7 +663,7 @@ class HasMessage(HandleAble, abc.ABC):
 
 
 @dataclass(frozen=True)
-class HasTags(HandleAble, abc.ABC):
+class HasTags(HandleAble):
     tags: BaseTags
 
     @classmethod
@@ -675,12 +674,12 @@ class HasTags(HandleAble, abc.ABC):
 
 
 @dataclass(frozen=True)
-class InChannel(HandleAble, abc.ABC):
+class InChannel(HandleAble):
     where: str
 
 
 @dataclass(frozen=True)
-class UserInChannel(FromUser, InChannel, abc.ABC):
+class UserInChannel(FromUser, InChannel):
     pass
 
 

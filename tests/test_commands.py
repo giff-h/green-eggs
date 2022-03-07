@@ -4,6 +4,8 @@ import sys
 import time
 from typing import List
 
+import pytest
+
 from green_eggs.api import TwitchApiCommon
 from green_eggs.channel import Channel
 from green_eggs.commands import (
@@ -255,13 +257,9 @@ async def test_runner_validates_signature():
     def invalid_function(never):
         return str(never)
 
-    try:
-        runner = CommandRunner(invalid_function, global_cooldown=None, user_cooldown=None)
-    except TypeError as e:
-        name = 'test_runner_validates_signature.<locals>.invalid_function'
-        assert e.args[0] == f'Unexpected required keyword parameter in <{name}>: \'never\''
-    else:
-        assert False, runner
+    name = 'test_runner_validates_signature.<locals>.invalid_function'
+    with pytest.raises(TypeError, match=f'Unexpected required keyword parameter in <{name}>: \'never\''):
+        CommandRunner(invalid_function, global_cooldown=None, user_cooldown=None)
 
 
 async def test_runner_last_runs_not_set_without_cooldown(api_common: TwitchApiCommon, channel: Channel):
@@ -280,20 +278,17 @@ async def test_runner_global_cooldown_allows_when_elapsed(api_common: TwitchApiC
 
 
 async def test_runner_global_cooldown_raises_exception_when_not_elapsed(api_common: TwitchApiCommon, channel: Channel):
-    runner = CommandRunner(lambda: None, global_cooldown=2, user_cooldown=None)
-    global_last_run = time.monotonic() - 1
-    user_last_run = time.monotonic() - 2
+    runner = CommandRunner(lambda: None, global_cooldown=4, user_cooldown=None)
+    global_last_run = time.monotonic() - 3
+    user_last_run = time.monotonic() - 4
     runner._last_run = global_last_run
-    runner._last_run_for_user['123'] = user_last_run
-    try:
-        await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
-    except CooldownNotElapsed as e:
-        assert isinstance(e, GlobalCooldownNotElapsed)
-        assert 0.9 < e.remaining < 1.1
-        assert runner._last_run == global_last_run
-        assert runner._last_run_for_user['123'] == user_last_run
-    else:
-        assert False, 'Not raised'
+    runner._last_run_for_user['456'] = user_last_run
+    with pytest.raises(CooldownNotElapsed) as exc_info:
+        await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='456')))
+    assert exc_info.type is GlobalCooldownNotElapsed
+    assert 0.9 < exc_info.value.remaining < 1.1
+    assert runner._last_run == global_last_run
+    assert runner._last_run_for_user['456'] == user_last_run
 
 
 async def test_runner_user_cooldown_allows_when_elapsed(api_common: TwitchApiCommon, channel: Channel):
@@ -310,15 +305,12 @@ async def test_runner_user_cooldown_raises_exception_when_not_elapsed(api_common
     global_last_run = time.monotonic() - 2
     runner._last_run = global_last_run
     runner._last_run_for_user['123'] = user_last_run
-    try:
+    with pytest.raises(CooldownNotElapsed) as exc_info:
         await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
-    except CooldownNotElapsed as e:
-        assert isinstance(e, UserCooldownNotElapsed)
-        assert 0.9 < e.remaining < 1.1
-        assert runner._last_run_for_user['123'] == user_last_run
-        assert runner._last_run == global_last_run
-    else:
-        assert False, 'Not raised'
+    assert exc_info.type is UserCooldownNotElapsed
+    assert 0.9 < exc_info.value.remaining < 1.1
+    assert runner._last_run_for_user['123'] == user_last_run
+    assert runner._last_run == global_last_run
 
 
 async def test_runner_populates_both_times_with_both_cooldowns(api_common: TwitchApiCommon, channel: Channel):
@@ -336,15 +328,12 @@ async def test_runner_user_cooldown_beats_global_cooldown(api_common: TwitchApiC
     last_run = time.monotonic() - 1
     runner._last_run = last_run
     runner._last_run_for_user['123'] = last_run
-    try:
+    with pytest.raises(CooldownNotElapsed) as exc_info:
         await runner.run(api=api_common, channel=channel, message=priv_msg(tags_kwargs=dict(user_id='123')))
-    except CooldownNotElapsed as e:
-        assert isinstance(e, UserCooldownNotElapsed)
-        assert 2.9 < e.remaining < 3.1
-        assert runner._last_run_for_user['123'] == last_run
-        assert runner._last_run == last_run
-    else:
-        assert False, 'Not raised'
+    assert exc_info.type is UserCooldownNotElapsed
+    assert 2.9 < exc_info.value.remaining < 3.1
+    assert runner._last_run_for_user['123'] == last_run
+    assert runner._last_run == last_run
 
 
 def test_registry():
@@ -361,12 +350,8 @@ def test_registry():
     assert list(registry) == [AndTrigger()]
     assert registry[AndTrigger()]._command_func is _command_two
     del registry[AndTrigger()]
-    try:
-        c = registry[AndTrigger()]
-    except KeyError:
-        pass  # success
-    else:
-        assert False, c
+    with pytest.raises(KeyError):
+        _ = registry[AndTrigger()]
 
 
 async def test_registry_all(channel: Channel):
@@ -436,13 +421,9 @@ def test_registry_rejects_func():
 
     registry = CommandRegistry()
     wrapper = registry.decorator(AndTrigger(), global_cooldown=None, user_cooldown=None)
-    try:
-        result = wrapper(_command)
-    except TypeError as e:
-        name = 'test_registry_rejects_func.<locals>._command'
-        assert e.args[0] == f'Unexpected required keyword parameter in <{name}>: \'extra\''
-    else:
-        assert False, result
+    name = 'test_registry_rejects_func.<locals>._command'
+    with pytest.raises(TypeError, match=f'Unexpected required keyword parameter in <{name}>: \'extra\''):
+        wrapper(_command)
 
 
 # This test asserts a condition that only happens on python 3.8 and later
@@ -460,12 +441,10 @@ def _command(a, /):
 
         registry = CommandRegistry()
         wrapper = registry.decorator(AndTrigger(), global_cooldown=None, user_cooldown=None)
-        try:
-            result = wrapper(_command)
-        except TypeError as e:
-            assert e.args[0] == 'Positional-only parameters without defaults are not allowed in <_command>'
-        else:
-            assert False, result
+        with pytest.raises(
+            TypeError, match='Positional-only parameters without defaults are not allowed in <_command>'
+        ):
+            wrapper(_command)
 
 
 async def test_registry_decorator_with_factory(api_common: TwitchApiCommon, channel: Channel):
