@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs.api import TwitchApiDirect
@@ -34,27 +35,19 @@ async def test_body(api_direct: TwitchApiDirect):
 
 
 async def test_raise(api_direct: TwitchApiDirect, mocker: MockerFixture):
-    mocker.patch('tests.MockResponse.raise_for_status', side_effect=Exception('Bad status'))
-    try:
+    exc = Exception('Bad status')
+    mocker.patch('tests.MockResponse.raise_for_status', side_effect=exc)
+    with pytest.raises(Exception, match='Bad status') as exc_info:
         await api_direct._request('method', 'path')
-    except Exception as e:
-        assert e.args == ('Bad status',)
-    else:
-        assert False, 'Did not raise'
+    assert exc_info.value is exc
     api_direct._session.request.assert_called_once_with('method', 'base/path', json=None)  # type: ignore[attr-defined]
 
 
 async def test_no_raise(api_direct: TwitchApiDirect, mocker: MockerFixture):
     mocker.patch('tests.MockResponse.raise_for_status', side_effect=Exception('Bad status'))
-    try:
-        result = await api_direct._request('method', 'path', raise_for_status=False)
-    except Exception as e:
-        assert False, e
-    else:
-        api_direct._session.request.assert_called_once_with(  # type: ignore[attr-defined]
-            'method', 'base/path', json=None
-        )
-        assert result == dict(foo='bar')
+    result = await api_direct._request('method', 'path', raise_for_status=False)
+    api_direct._session.request.assert_called_once_with('method', 'base/path', json=None)  # type: ignore[attr-defined]
+    assert result == dict(foo='bar')
 
 
 async def test_start_commercial(api_direct: TwitchApiDirect):

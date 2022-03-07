@@ -2,6 +2,7 @@
 from inspect import Parameter
 import sys
 
+import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs.utils import catch_all, validate_function_signature
@@ -41,12 +42,10 @@ def _invalid_function(a, b=1, /):
         exec(func, globals_, locals_)
         _invalid_function = locals_['_invalid_function']
 
-        try:
+        with pytest.raises(
+            TypeError, match='Positional-only parameters without defaults are not allowed in <_invalid_function>'
+        ):
             validate_function_signature(_invalid_function, ['a', 'b'])
-        except TypeError as e:
-            assert e.args[0] == 'Positional-only parameters without defaults are not allowed in <_invalid_function>'
-        else:
-            assert False, 'Not raised'
 
     def test_validate_function_signature_positional_only_with_defaults_allowed():
         # This is necessary to bypass the syntax error on 3.7
@@ -65,29 +64,20 @@ def test_validate_function_signature_one_unexpected_parameter():
     def _invalid_function(unexpected, with_default=None):
         return str(unexpected) + str(with_default)
 
-    try:
+    name = 'test_validate_function_signature_one_unexpected_parameter.<locals>._invalid_function'
+    with pytest.raises(TypeError, match=f'Unexpected required keyword parameter in <{name}>: \'unexpected\''):
         validate_function_signature(_invalid_function, ['not_present'])
-    except TypeError as e:
-        name = 'test_validate_function_signature_one_unexpected_parameter.<locals>._invalid_function'
-        assert e.args[0] == f'Unexpected required keyword parameter in <{name}>: \'unexpected\''
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_function_signature_multiple_unexpected_parameters():
     def _invalid_function(unexpected_one, unexpected_two, with_default=None):
         return str(unexpected_one) + str(unexpected_two) + str(with_default)
 
-    try:
+    name = 'test_validate_function_signature_multiple_unexpected_parameters.<locals>._invalid_function'
+    with pytest.raises(
+        TypeError, match=f'Unexpected required keyword parameters in <{name}>: \'unexpected_one\', \'unexpected_two\''
+    ):
         validate_function_signature(_invalid_function, ['not_found'])
-    except TypeError as e:
-        name = 'test_validate_function_signature_multiple_unexpected_parameters.<locals>._invalid_function'
-        assert (
-            e.args[0] == f'Unexpected required keyword parameters in <{name}>: '
-            '\'unexpected_one\', \'unexpected_two\''
-        )
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_function_signature_returns_subset_of_expected_keywords():

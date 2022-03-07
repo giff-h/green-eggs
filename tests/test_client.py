@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 
+import pytest
 from pytest_mock import MockerFixture
 from websockets.exceptions import ConnectionClosedError
 from websockets.frames import Close
@@ -26,23 +27,21 @@ async def test_failed_connection_fails_all(mocker: MockerFixture):
     exc = Exception('FAIL')
     mocker.patch('websockets.connect', side_effect=exc)
     client = TwitchChatClient(username='test_username', token='test_token', logger=logger)
-    try:
+    with pytest.raises(Exception) as exc_info:
         async with client:
-            assert False
-    except Exception as e:
-        assert client.ws_exc is exc
-        assert e is exc
+            pass
+    assert client.ws_exc is exc
+    assert exc_info.value is exc
 
 
 async def test_broken_expectations(mocker: MockerFixture):
     mocker.patch('websockets.connect', return_value=mock_socket(ignore=['auth']))
     client = TwitchChatClient(username='test_username', token='test_token', logger=logger)
     client._expect_timeout = 0.1
-    try:
+    with pytest.raises(asyncio.TimeoutError):
         async with client:
-            assert False
-    except asyncio.TimeoutError:
-        assert client.ws_exc is None
+            pass
+    assert client.ws_exc is None
 
 
 async def test_initialize_requires_connection(mocker: MockerFixture):
@@ -134,12 +133,8 @@ async def test_join_when_leaving_wait(client: TwitchChatClient):
 
 async def test_join_when_leaving_raise(client: TwitchChatClient):
     client._expectations['part'] = dict(raising=asyncio.Future())
-    try:
-        result = await client.join('raising', 'raise')
-    except ChannelPresenceRaceCondition as e:
-        assert e.args[0] == 'Tried to join while leaving'
-    else:
-        assert False, result
+    with pytest.raises(ChannelPresenceRaceCondition, match='Tried to join while leaving'):
+        await client.join('raising', 'raise')
 
 
 async def test_join_when_leaving_abort(client: TwitchChatClient):
@@ -171,12 +166,8 @@ async def test_leave_when_joining_wait(client: TwitchChatClient):
 
 async def test_leave_when_joining_raise(client: TwitchChatClient):
     client._expectations['join'] = dict(raising=asyncio.Future())
-    try:
-        result = await client.leave('raising', 'raise')
-    except ChannelPresenceRaceCondition as e:
-        assert e.args[0] == 'Tried to leave while joining'
-    else:
-        assert False, result
+    with pytest.raises(ChannelPresenceRaceCondition, match='Tried to leave while joining'):
+        await client.leave('raising', 'raise')
 
 
 async def test_leave_when_joining_abort(client: TwitchChatClient):

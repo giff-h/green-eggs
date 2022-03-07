@@ -4,23 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from green_eggs.data_types import (
-    Badges,
-    ClearChat,
-    ClearMsg,
-    Code353,
-    Code366,
-    HandleAble,
-    HostTarget,
-    JoinPart,
-    Notice,
-    PrivMsg,
-    RoomState,
-    UserNotice,
-    UserState,
-    Whisper,
-    patterns,
-)
+from green_eggs import data_types as dt
 from tests.utils.data_types import join_part, priv_msg
 
 raw_data = json.loads((Path(__file__).resolve().parent / 'utils' / 'raw_data.json').read_text())
@@ -34,12 +18,12 @@ def default_json_dump(obj):
     raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
 
-def data_type_from_data(raw: str) -> HandleAble:
-    result: Optional[HandleAble] = None
-    for dt, pattern in patterns.items():
+def data_type_from_data(raw: str) -> dt.HandleAble:
+    result: Optional[dt.HandleAble] = None
+    for handle_type, pattern in dt.patterns.items():
         found = pattern.match(raw)
         if found is not None:
-            result = dt.from_match_dict(**found.groupdict(), raw=raw, default_timestamp=None)
+            result = handle_type.from_match_dict(**found.groupdict(), raw=raw, default_timestamp=None)
             break
     assert result is not None
     return result
@@ -47,81 +31,83 @@ def data_type_from_data(raw: str) -> HandleAble:
 
 def base_asserts(data, handle_type):
     assert len(data)
-    assert all(isinstance(dt, handle_type) for dt in data)
-    assert all(dt == dt.from_match_dict(**dt.as_original_match_dict()) for dt in data)
-    assert all(json.dumps(dt.model_data(), default=default_json_dump) for dt in data)
+    assert all(isinstance(handle_able, handle_type) for handle_able in data)
+    assert all(
+        handle_able == handle_able.from_match_dict(**handle_able.as_original_match_dict()) for handle_able in data
+    )
+    assert all(json.dumps(handle_able.model_data(), default=default_json_dump) for handle_able in data)
 
 
 def test_clearchat():
     data = list(map(data_type_from_data, raw_data['clear chat']))
-    base_asserts(data, ClearChat)
+    base_asserts(data, dt.ClearChat)
 
 
 def test_clearmsg():
     data = list(map(data_type_from_data, raw_data['clear message']))
-    base_asserts(data, ClearMsg)
+    base_asserts(data, dt.ClearMsg)
 
 
 def test_code353():
     data = list(map(data_type_from_data, raw_data['code 353']))
-    base_asserts(data, Code353)
+    base_asserts(data, dt.Code353)
 
 
 def test_code366():
     data = list(map(data_type_from_data, raw_data['code 366']))
-    base_asserts(data, Code366)
+    base_asserts(data, dt.Code366)
 
 
 def test_hosttarget():
     data = list(map(data_type_from_data, raw_data['host target']))
-    base_asserts(data, HostTarget)
+    base_asserts(data, dt.HostTarget)
 
 
 def test_joinpart():
     data = list(map(data_type_from_data, raw_data['join part']))
-    base_asserts(data, JoinPart)
+    base_asserts(data, dt.JoinPart)
 
 
 def test_notice():
     data = list(map(data_type_from_data, raw_data['notice']))
-    base_asserts(data, Notice)
+    base_asserts(data, dt.Notice)
 
 
 def test_privmsg():
     data = list(map(data_type_from_data, raw_data['message']))
-    base_asserts(data, PrivMsg)
+    base_asserts(data, dt.PrivMsg)
 
 
 def test_roomstate():
     data = list(map(data_type_from_data, raw_data['room state']))
-    base_asserts(data, RoomState)
+    base_asserts(data, dt.RoomState)
 
 
 def test_usernotice():
     data = list(map(data_type_from_data, raw_data['user notice']))
-    base_asserts(data, UserNotice)
+    base_asserts(data, dt.UserNotice)
 
 
 def test_userstate():
     data = list(map(data_type_from_data, raw_data['user state']))
-    base_asserts(data, UserState)
+    base_asserts(data, dt.UserState)
 
 
 def test_whisper():
     data = list(map(data_type_from_data, raw_data['whisper']))
-    base_asserts(data, Whisper)
+    base_asserts(data, dt.Whisper)
 
 
 # Functions and properties
 
 
 def test_badges_badge_order_empty():
-    badges = Badges.from_raw_data('')
+    badges = dt.Badges.from_raw_data('')
     assert badges.badge_order == []
 
 
 def test_badges_badge_order_gets_set_properties():
-    badges = Badges.from_raw_data('moderator/1,subscriber/12,bits/50000')
+    badges = dt.Badges.from_raw_data('moderator/1,subscriber/12,bits/50000')
     assert badges.badge_order == ['moderator', 'subscriber', 'bits']
     for attr in badges.badge_order:
         assert getattr(badges, attr) is not None

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
 
+import pytest
+
 from green_eggs.config import Config, LinkAllowUserConditions, LinkPurgeActions
 
 
@@ -17,25 +19,18 @@ def test_validate_enum_member_valid_when_value_is_an_enum_value():
 
 
 def test_validate_enum_member_invalid_when_value_is_an_enum_name():
-    try:
+    with pytest.raises(ValueError, match='Invalid value for test: \'DELETE\'. Must be a member of the illuminati'):
         Config.validate_enum_member(dict(test='DELETE'), 'test', LinkPurgeActions, 'the illuminati')
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for test: \'DELETE\'. Must be a member of the illuminati'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_enum_member_invalid_when_a_different_enum():
-    try:
+    with pytest.raises(
+        ValueError,
+        match='Invalid value for test: <LinkPurgeActions.DELETE: \'delete\'>. Must be a member of the illuminati',
+    ):
         Config.validate_enum_member(
             dict(test=LinkPurgeActions.DELETE), 'test', LinkAllowUserConditions, 'the illuminati'
         )
-    except ValueError as e:
-        assert e.args[0] == (
-            'Invalid value for test: <LinkPurgeActions.DELETE: \'delete\'>. Must be a member of the illuminati'
-        )
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_enum_member_valid_creatable():
@@ -49,21 +44,13 @@ def test_validate_instance_valid_when_key_not_in_kwargs():
 
 
 def test_validate_instance_invalid_when_wrong_type():
-    try:
+    with pytest.raises(ValueError, match='Invalid value for test: 1. Must be an instance of str'):
         Config.validate_instance(dict(test=1), 'test', str)
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for test: 1. Must be an instance of str'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_instance_invalid_with_tuple_of_types():
-    try:
+    with pytest.raises(ValueError, match='Invalid value for test: 2. Must be an instance of bool or NoneType'):
         Config.validate_instance(dict(test=2), 'test', (bool, type(None)))
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for test: 2. Must be an instance of bool or NoneType'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_instance_valid_for_subclasses():
@@ -79,12 +66,10 @@ def test_validate_config_link_purge_action_valid():
 
 
 def test_validate_config_link_purge_action_invalid():
-    try:
+    with pytest.raises(
+        ValueError, match='Invalid value for link_purge_action: \'abc\'. Must be a member of LinkPurgeActions'
+    ):
         Config.validate_config(dict(link_purge_action='abc'))
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_purge_action: \'abc\'. Must be a member of LinkPurgeActions'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_user_condition_valid():
@@ -92,14 +77,11 @@ def test_validate_config_link_allow_user_condition_valid():
 
 
 def test_validate_config_link_allow_user_condition_invalid():
-    try:
+    with pytest.raises(
+        ValueError,
+        match='Invalid value for link_allow_user_condition: \'abc\'. Must be a member of LinkAllowUserConditions',
+    ):
         Config.validate_config(dict(link_allow_user_condition='abc'))
-    except ValueError as e:
-        assert e.args[0] == (
-            'Invalid value for link_allow_user_condition: \'abc\'. Must be a member of LinkAllowUserConditions'
-        )
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_config_link_purge_timeout_duration_valid():
@@ -107,12 +89,10 @@ def test_validate_config_link_purge_timeout_duration_valid():
 
 
 def test_validate_config_link_purge_timeout_duration_invalid():
-    try:
+    with pytest.raises(
+        ValueError, match='Invalid value for link_purge_timeout_duration: \'abc\'. Must be an instance of int'
+    ):
         Config.validate_config(dict(link_purge_timeout_duration='abc'))
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_purge_timeout_duration: \'abc\'. Must be an instance of int'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_target_conditions_valid_empty():
@@ -128,24 +108,21 @@ def test_validate_config_link_allow_target_conditions_valid_pattern():
 
 
 def test_validate_config_link_allow_target_conditions_invalid_not_list():
-    try:
+    with pytest.raises(
+        ValueError, match='Invalid value for link_allow_target_conditions: \'abc\'. Must be an instance of list'
+    ):
         Config.validate_config(dict(link_allow_target_conditions='abc'))
-    except ValueError as e:
-        assert e.args[0] == 'Invalid value for link_allow_target_conditions: \'abc\'. Must be an instance of list'
-    else:
-        assert False, 'Not raised'
 
 
 def test_validate_config_link_allow_target_conditions_invalid_int():
-    try:
-        Config.validate_config(dict(link_allow_target_conditions=[dict(test=1)]))
-    except ValueError as e:
-        assert e.args[0] == (
+    with pytest.raises(
+        ValueError,
+        match=(
             'Invalid value for link_allow_target_conditions: {\'test\': 1}. '
             'All values must either be string or regex pattern'
-        )
-    else:
-        assert False, 'Not raised'
+        ),
+    ):
+        Config.validate_config(dict(link_allow_target_conditions=[dict(test=1)]))
 
 
 def test_from_python_defaults():

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from aiohttp import ClientResponseError
+import pytest
 from pytest_mock import MockerFixture
 
 from green_eggs.api import TwitchApiCommon, TwitchApiDirect
@@ -20,12 +21,8 @@ def test_direct(api_common: TwitchApiCommon):
 
 
 async def test_get_shoutout_info_both_none(api_common: TwitchApiCommon):
-    try:
+    with pytest.raises(ValueError, match='Most provide either username or user_id'):
         await api_common.get_shoutout_info()
-    except ValueError as e:
-        assert e.args[0] == 'Most provide either username or user_id'
-    else:
-        assert False
 
 
 async def test_get_shoutout_info_only_username(api_common: TwitchApiCommon, mocker: MockerFixture):
@@ -188,12 +185,9 @@ async def test_is_user_subscribed_to_channel_raise_not_404(api_common: TwitchApi
         side_effect=ClientResponseError(None, (), status=400),  # type: ignore[arg-type]
     )
 
-    try:
+    with pytest.raises(ClientResponseError) as exc_info:
         await api_common.is_user_subscribed_to_channel(broadcaster_id='123', user_id='456')
-    except ClientResponseError as e:
-        assert e.status == 400
-    else:
-        assert False, 'Not raised'
+    assert exc_info.value.status == 400
 
     api_common.direct.check_user_subscription.assert_called_once_with(  # type: ignore[attr-defined]
         broadcaster_id='123', user_id='456'
