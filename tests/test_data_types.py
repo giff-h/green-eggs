@@ -23,79 +23,83 @@ def data_type_from_data(raw: str) -> dt.HandleAble:
     for handle_type, pattern in dt.patterns.items():
         found = pattern.match(raw)
         if found is not None:
-            result = handle_type.from_match_dict(**found.groupdict(), raw=raw, default_timestamp=None)
+            result = handle_type.from_match_dict(
+                **found.groupdict(), raw=raw, default_timestamp=datetime.datetime.utcnow()
+            )
             break
     assert result is not None
     return result
 
 
-def base_asserts(data, handle_type):
-    assert len(data)
-    assert all(isinstance(handle_able, handle_type) for handle_able in data)
-    assert all(
-        handle_able == handle_able.from_match_dict(**handle_able.as_original_match_dict()) for handle_able in data
-    )
-    assert all(json.dumps(handle_able.model_data(), default=default_json_dump) for handle_able in data)
+def base_asserts(handleable_list, handle_type):
+    assert len(handleable_list)
+    for handleable in handleable_list:
+        assert isinstance(handleable, handle_type)
+        assert handleable == handleable.from_match_dict(**handleable.as_original_match_dict())
+        model_data = handleable.model_data()
+        for value in model_data.values():
+            assert isinstance(value, (bool, int, str, list, dict, datetime.datetime))
+        assert handleable == handleable.from_model_data(**model_data)
 
 
 def test_clearchat():
-    data = list(map(data_type_from_data, raw_data['clear chat']))
-    base_asserts(data, dt.ClearChat)
+    handleable_list = list(map(data_type_from_data, raw_data['clear chat']))
+    base_asserts(handleable_list, dt.ClearChat)
 
 
 def test_clearmsg():
-    data = list(map(data_type_from_data, raw_data['clear message']))
-    base_asserts(data, dt.ClearMsg)
+    handleable_list = list(map(data_type_from_data, raw_data['clear message']))
+    base_asserts(handleable_list, dt.ClearMsg)
 
 
 def test_code353():
-    data = list(map(data_type_from_data, raw_data['code 353']))
-    base_asserts(data, dt.Code353)
+    handleable_list = list(map(data_type_from_data, raw_data['code 353']))
+    base_asserts(handleable_list, dt.Code353)
 
 
 def test_code366():
-    data = list(map(data_type_from_data, raw_data['code 366']))
-    base_asserts(data, dt.Code366)
+    handleable_list = list(map(data_type_from_data, raw_data['code 366']))
+    base_asserts(handleable_list, dt.Code366)
 
 
 def test_hosttarget():
-    data = list(map(data_type_from_data, raw_data['host target']))
-    base_asserts(data, dt.HostTarget)
+    handleable_list = list(map(data_type_from_data, raw_data['host target']))
+    base_asserts(handleable_list, dt.HostTarget)
 
 
 def test_joinpart():
-    data = list(map(data_type_from_data, raw_data['join part']))
-    base_asserts(data, dt.JoinPart)
+    handleable_list = list(map(data_type_from_data, raw_data['join part']))
+    base_asserts(handleable_list, dt.JoinPart)
 
 
 def test_notice():
-    data = list(map(data_type_from_data, raw_data['notice']))
-    base_asserts(data, dt.Notice)
+    handleable_list = list(map(data_type_from_data, raw_data['notice']))
+    base_asserts(handleable_list, dt.Notice)
 
 
 def test_privmsg():
-    data = list(map(data_type_from_data, raw_data['message']))
-    base_asserts(data, dt.PrivMsg)
+    handleable_list = list(map(data_type_from_data, raw_data['message']))
+    base_asserts(handleable_list, dt.PrivMsg)
 
 
 def test_roomstate():
-    data = list(map(data_type_from_data, raw_data['room state']))
-    base_asserts(data, dt.RoomState)
+    handleable_list = list(map(data_type_from_data, raw_data['room state']))
+    base_asserts(handleable_list, dt.RoomState)
 
 
 def test_usernotice():
-    data = list(map(data_type_from_data, raw_data['user notice']))
-    base_asserts(data, dt.UserNotice)
+    handleable_list = list(map(data_type_from_data, raw_data['user notice']))
+    base_asserts(handleable_list, dt.UserNotice)
 
 
 def test_userstate():
-    data = list(map(data_type_from_data, raw_data['user state']))
-    base_asserts(data, dt.UserState)
+    handleable_list = list(map(data_type_from_data, raw_data['user state']))
+    base_asserts(handleable_list, dt.UserState)
 
 
 def test_whisper():
-    data = list(map(data_type_from_data, raw_data['whisper']))
-    base_asserts(data, dt.Whisper)
+    handleable_list = list(map(data_type_from_data, raw_data['whisper']))
+    base_asserts(handleable_list, dt.Whisper)
 
 
 # Functions and properties
@@ -124,7 +128,7 @@ def test_joinpart_is_join():
 
 
 def test_privmsg_action_ban():
-    privmsg = priv_msg(handle_able_kwargs=dict(who='bad_user'))
+    privmsg = priv_msg(handleable_kwargs=dict(who='bad_user'))
     assert privmsg.action_ban() == '/ban bad_user'
     assert privmsg.action_ban('Because') == '/ban bad_user Because'
 
@@ -135,7 +139,7 @@ def test_privmsg_action_delete():
 
 
 def test_privmsg_action_timeout():
-    privmsg = priv_msg(handle_able_kwargs=dict(who='bad_user'))
+    privmsg = priv_msg(handleable_kwargs=dict(who='bad_user'))
     assert privmsg.action_timeout() == '/timeout bad_user 60'
     assert privmsg.action_timeout(1) == '/timeout bad_user 1'
     assert privmsg.action_timeout(reason='Because') == '/timeout bad_user 60 Because'
@@ -143,7 +147,7 @@ def test_privmsg_action_timeout():
 
 
 def test_privmsg_is_from_user():
-    privmsg = priv_msg(handle_able_kwargs=dict(who='it_me'), tags_kwargs=dict(display_name='卄モㄥㄥ口山口尺ㄥ刀'))
+    privmsg = priv_msg(handleable_kwargs=dict(who='it_me'), tags_kwargs=dict(display_name='卄モㄥㄥ口山口尺ㄥ刀'))
     assert privmsg.is_from_user('it_me')
     assert privmsg.is_from_user('IT_ME')
     assert privmsg.is_from_user('卄モㄥㄥ口山口尺ㄥ刀')
@@ -175,7 +179,7 @@ def test_privmsg_is_sender_vip():
 
 
 def test_privmsg_words():
-    assert priv_msg(handle_able_kwargs=dict(message='')).words == []
-    assert priv_msg(handle_able_kwargs=dict(message='One Two Three')).words == ['One', 'Two', 'Three']
-    assert priv_msg(handle_able_kwargs=dict(message='One  Two')).words == ['One', 'Two']
-    assert priv_msg(handle_able_kwargs=dict(message=' One-Two Three/\tFour')).words == ['One-Two', 'Three/', 'Four']
+    assert priv_msg(handleable_kwargs=dict(message='')).words == []
+    assert priv_msg(handleable_kwargs=dict(message='One Two Three')).words == ['One', 'Two', 'Three']
+    assert priv_msg(handleable_kwargs=dict(message='One  Two')).words == ['One', 'Two']
+    assert priv_msg(handleable_kwargs=dict(message=' One-Two Three/\tFour')).words == ['One-Two', 'Three/', 'Four']

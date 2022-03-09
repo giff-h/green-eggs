@@ -58,11 +58,22 @@ def _bool_of_int_of(inp: str) -> bool:
     return bool(int(inp))
 
 
+@dataclass(frozen=True)
+class DatabaseTranslatable:
+    @classmethod
+    def from_model_data(cls, **kwargs) -> 'DatabaseTranslatable':
+        # noinspection PyUnexpectedArgument
+        return cls(**kwargs)
+
+    def model_data(self) -> Dict[str, Any]:
+        return {f.name: getattr(self, f.name) for f in fields(self) if getattr(self, f.name) is not None}
+
+
 # Tags: Abstract
 
 
 @dataclass(frozen=True)
-class BaseTags:
+class BaseTags(DatabaseTranslatable):
     deprecated_fields: ClassVar[List[str]] = [
         'subscriber',
         'turbo',
@@ -76,7 +87,7 @@ class BaseTags:
     raw: str = field(compare=False)
 
     @classmethod
-    def from_raw_data(cls, data: str):
+    def from_raw_data(cls, data: str) -> 'BaseTags':
         tag: str
         value: str
         to_prepare: Dict[str, str] = dict()
@@ -93,9 +104,6 @@ class BaseTags:
         unhandled = {f_name: kwargs.pop(f_name) for f_name in set(kwargs.keys()) - set(f.name for f in fields(cls))}
 
         return dict(deprecated=deprecated, unhandled=unhandled, **kwargs)
-
-    def model_data(self) -> Dict[str, Any]:
-        return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
 @dataclass(frozen=True)
@@ -244,9 +252,20 @@ class Badges(BaseBadges):
 
 @dataclass(frozen=True)
 class UserBaseTags(BaseTags):
+    badges_db_prefix: ClassVar[str] = 'badges_'
+
     badges: Badges
     color: str
     display_name: str
+
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable:
+        prefix_chop = len(cls.badges_db_prefix)
+        badges_kwargs = {
+            k[prefix_chop:]: kwargs.pop(k) for k in list(kwargs.keys()) if k.startswith(cls.badges_db_prefix)
+        }
+        kwargs['badges'] = Badges.from_model_data(**badges_kwargs)
+        return super().from_model_data(**kwargs)
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
@@ -258,13 +277,8 @@ class UserBaseTags(BaseTags):
 
     def model_data(self) -> Dict[str, Any]:
         data = super().model_data()
-
-        data['badges'] = badges = dict()
-        for f in fields(self.badges):
-            value = getattr(self.badges, f.name)
-            if value is not None:
-                badges[f.name] = value
-
+        data.pop('badges')
+        data.update((self.badges_db_prefix + name, value) for name, value in self.badges.model_data().items())
         return data
 
 
@@ -281,7 +295,18 @@ class BadgeInfo(BaseBadges):
 
 @dataclass(frozen=True)
 class UserChatBaseTags(UserBaseTags):
+    badge_info_db_prefix: ClassVar[str] = 'badge_info_'
+
     badge_info: BadgeInfo
+
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable:
+        prefix_chop = len(cls.badge_info_db_prefix)
+        badge_info_kwargs = {
+            k[prefix_chop:]: kwargs.pop(k) for k in list(kwargs.keys()) if k.startswith(cls.badge_info_db_prefix)
+        }
+        kwargs['badge_info'] = BadgeInfo.from_model_data(**badge_info_kwargs)
+        return super().from_model_data(**kwargs)
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
@@ -292,13 +317,8 @@ class UserChatBaseTags(UserBaseTags):
 
     def model_data(self) -> Dict[str, Any]:
         data = super().model_data()
-
-        data['badge_info'] = badge_info = dict()
-        for f in fields(self.badge_info):
-            value = getattr(self.badge_info, f.name)
-            if value is not None:
-                badge_info[f.name] = value
-
+        data.pop('badge_info')
+        data.update((self.badge_info_db_prefix + name, value) for name, value in self.badge_info.model_data().items())
         return data
 
 
@@ -430,21 +450,23 @@ class RoomStateTags(BaseTags):
         (_bool_of_int_of, ['emote_only', 'r9k', 'rituals', 'subs_only']),
     ]
 
-    emote_only: Optional[bool]
-    followers_only: Optional[int]
-    r9k: Optional[bool]
-    rituals: Optional[bool]
     room_id: str
-    slow: Optional[int]
-    subs_only: Optional[bool]
+
+    emote_only: Optional[bool] = None
+    followers_only: Optional[int] = None
+    r9k: Optional[bool] = None
+    rituals: Optional[bool] = None
+    slow: Optional[int] = None
+    subs_only: Optional[bool] = None
 
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         return dict(
             **{
-                attr: converter(kwargs.pop(attr)) if attr in kwargs else None
+                attr: converter(kwargs.pop(attr))
                 for converter, attrs in cls.converter_mapping
                 for attr in attrs
+                if attr in kwargs
             },
             **super().prepare_data(**kwargs),
         )
@@ -562,6 +584,15 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     msg_params: UserNoticeMessageParams
 
     @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable:
+        prefix_chop = len(UserNoticeMessageParams.prefix)
+        msg_params_kwargs = {
+            k[prefix_chop:]: kwargs.pop(k) for k in list(kwargs.keys()) if k.startswith(UserNoticeMessageParams.prefix)
+        }
+        kwargs['msg_params'] = UserNoticeMessageParams.from_model_data(**msg_params_kwargs)
+        return super().from_model_data(**kwargs)
+
+    @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]:
         prefix_chop = len(UserNoticeMessageParams.prefix)
         msg_params = {
@@ -583,13 +614,10 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
 
     def model_data(self) -> Dict[str, Any]:
         data = super().model_data()
-
-        data['msg_params'] = msg_params = dict()
-        for f in fields(self.msg_params):
-            value = getattr(self.msg_params, f.name)
-            if value is not None:
-                msg_params[f.name] = value
-
+        data.pop('msg_params')
+        data.update(
+            (UserNoticeMessageParams.prefix + name, value) for name, value in self.msg_params.model_data().items()
+        )
         return data
 
 
@@ -608,8 +636,8 @@ class WhisperTags(UserMessageBaseTags):
 
 
 @dataclass(frozen=True)
-class HandleAble:
-    # `default_timestamp` is not from twitch, but is set by the IRC client when the data was received
+class HandleAble(DatabaseTranslatable):
+    # `default_timestamp` is not from twitch, but is set by the custom IRC client when the data was received
     default_timestamp: datetime.datetime = field(compare=False)
     raw: str = field(compare=False)
 
@@ -623,15 +651,6 @@ class HandleAble:
         }
         if isinstance(self, HasTags):
             data['tags'] = self.tags.raw
-
-        return data
-
-    def model_data(self) -> Dict[str, Any]:
-        data = {
-            f.name: getattr(self, f.name) for f in fields(self) if f.name != 'tags' or not isinstance(self, HasTags)
-        }
-        if isinstance(self, HasTags):
-            data.update(self.tags.model_data())
 
         return data
 
@@ -664,13 +683,32 @@ class HasMessage(HandleAble):
 
 @dataclass(frozen=True)
 class HasTags(HandleAble):
+    tags_db_prefix: ClassVar[str] = 'tags_'
+
     tags: BaseTags
 
     @classmethod
-    def from_match_dict(cls, **kwargs) -> HandleAble:
-        tags_type: Type[BaseTags] = next(f.type for f in fields(cls) if f.name == 'tags')
+    def _tags_type(cls) -> Type[BaseTags]:
+        return next(f.type for f in fields(cls) if f.name == 'tags' and issubclass(f.type, BaseTags))
 
+    @classmethod
+    def from_match_dict(cls, **kwargs) -> HandleAble:
+        tags_type = cls._tags_type()
         return super().from_match_dict(tags=tags_type.from_raw_data(kwargs.pop('tags')), **kwargs)
+
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable:
+        prefix_chop = len(cls.tags_db_prefix)
+        tags_kwargs = {k[prefix_chop:]: kwargs.pop(k) for k in list(kwargs.keys()) if k.startswith(cls.tags_db_prefix)}
+        tags_type = cls._tags_type()
+        kwargs['tags'] = tags_type.from_model_data(**tags_kwargs)
+        return super().from_model_data(**kwargs)
+
+    def model_data(self) -> Dict[str, Any]:
+        data = super().model_data()
+        data.pop('tags')
+        data.update((self.tags_db_prefix + name, value) for name, value in self.tags.model_data().items())
+        return data
 
 
 @dataclass(frozen=True)
@@ -717,8 +755,8 @@ class ClearMsg(HasMessage, HasTags, InChannel):
 
 @dataclass(frozen=True)
 class HostTarget(InChannel):
-    number_of_viewers: Optional[int]
-    target: Optional[str]
+    number_of_viewers: Optional[int] = None
+    target: Optional[str] = None
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:
@@ -861,7 +899,7 @@ class RoomState(HasTags, InChannel):
 @dataclass(frozen=True)
 class UserNotice(HasTags, InChannel):
     tags: UserNoticeTags
-    message: Optional[str]
+    message: Optional[str] = None
 
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble:

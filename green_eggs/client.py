@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import asyncio
 import datetime
 from types import TracebackType
@@ -83,7 +85,7 @@ class TwitchChatClient:
             except RuntimeError as e:
                 # This allows the tests to be run on python 3.10 without falling into an endless loop
                 # due to some bizarre scenario where multiple event loops are used inside the test runner (?)
-                assert e.args != ('Event loop is closed',)
+                assert e.args == ('Event loop is closed',)
                 self._logger.exception('Unhandled exception in listen loop')
             except asyncio.CancelledError:
                 raise
@@ -401,7 +403,7 @@ class TwitchChatClient:
             self._logger.debug(f'Sending data: {redact_log!r}')
         await self._websocket.send(data + '\r\n')
 
-    async def __aenter__(self) -> 'TwitchChatClient':
+    async def __aenter__(self) -> TwitchChatClient:
         await self.connect()
         await self.initialize()
         return self
