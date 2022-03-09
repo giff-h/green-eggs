@@ -54,7 +54,7 @@ async def stress():
                 if match_result is not None:
                     # TODO curses view
                     try:
-                        handle_able = handle_type.from_match_dict(
+                        handleable = handle_type.from_match_dict(
                             default_timestamp=timestamp, raw=raw, **match_result.groupdict()
                         )
                     except Exception as e:
@@ -63,26 +63,26 @@ async def stress():
                         print(f'- {e}')
                     else:
                         # Actions here
-                        if isinstance(handle_able, dt.HasTags):
-                            for key, value in handle_able.tags.unhandled.items():
+                        if isinstance(handleable, dt.HasTags):
+                            for key, value in handleable.tags.unhandled.items():
                                 if key not in unhandled_tags[handle_type]:
                                     print(f'Unhandled {handle_type.__name__} tag: {key!r}')
                                 unhandled_tags[handle_type][key].add(value)
 
-                            if isinstance(handle_able.tags, dt.UserBaseTags):
-                                for key, value in handle_able.tags.badges.unhandled.items():
+                            if isinstance(handleable.tags, dt.UserBaseTags):
+                                for key, value in handleable.tags.badges.unhandled.items():
                                     if key not in unhandled_badges[handle_type]:
                                         print(f'Unhandled {handle_type.__name__} badge: {key!r}')
                                     unhandled_badges[handle_type][key].add(value)
 
-                            if isinstance(handle_able.tags, dt.UserChatBaseTags):
-                                for key, value in handle_able.tags.badge_info.unhandled.items():
+                            if isinstance(handleable.tags, dt.UserChatBaseTags):
+                                for key, value in handleable.tags.badge_info.unhandled.items():
                                     if key not in unhandled_badge_info[handle_type]:
                                         print(f'Unhandled {handle_type.__name__} badge info: {key!r}')
                                     unhandled_badge_info[handle_type][key].add(value)
 
-                            if isinstance(handle_able.tags, dt.UserNoticeTags):
-                                for key, value in handle_able.tags.msg_params.unhandled.items():
+                            if isinstance(handleable.tags, dt.UserNoticeTags):
+                                for key, value in handleable.tags.msg_params.unhandled.items():
                                     if key not in unhandled_msg_params[handle_type]:
                                         print(f'Unhandled {handle_type.__name__} msg_param: {key!r}')
                                     unhandled_msg_params[handle_type][key].add(value)

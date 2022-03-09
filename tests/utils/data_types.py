@@ -22,7 +22,7 @@ def join_part(is_join=True, **kwargs) -> JoinPart:
 
 
 def priv_msg(
-    *, handle_able_kwargs: Optional[Dict[str, Any]] = None, tags_kwargs: Optional[Dict[str, Any]] = None
+    *, handleable_kwargs: Optional[Dict[str, Any]] = None, tags_kwargs: Optional[Dict[str, Any]] = None
 ) -> PrivMsg:
     default_tags_kwargs = dict(
         badge_info_kwargs=dict(),
@@ -59,7 +59,7 @@ def priv_msg(
     tags_kwargs['badge_info'] = BadgeInfo(**badge_info_kwargs)  # type: ignore[arg-type]
     tags = PrivMsgTags(**tags_kwargs)
 
-    default_handle_able_kwargs = dict(
+    default_handleable_kwargs = dict(
         default_timestamp=datetime.datetime.utcnow(),
         message='',
         raw='',
@@ -67,18 +67,18 @@ def priv_msg(
         where='',
         who='',
     )
-    if handle_able_kwargs:
-        handle_able_kwargs = {
-            **default_handle_able_kwargs,
-            **handle_able_kwargs,
+    if handleable_kwargs:
+        handleable_kwargs = {
+            **default_handleable_kwargs,
+            **handleable_kwargs,
         }
     else:
-        handle_able_kwargs = default_handle_able_kwargs
-    return PrivMsg(**handle_able_kwargs)
+        handleable_kwargs = default_handleable_kwargs
+    return PrivMsg(**handleable_kwargs)
 
 
 def room_state(
-    *, handle_able_kwargs: Optional[Dict[str, Any]] = None, tags_kwargs: Optional[Dict[str, Any]] = None
+    *, handleable_kwargs: Optional[Dict[str, Any]] = None, tags_kwargs: Optional[Dict[str, Any]] = None
 ) -> RoomState:
     default_tags_kwargs: Dict[str, Any] = dict(
         emote_only=None,
@@ -102,12 +102,12 @@ def room_state(
         }
     tags = RoomStateTags(**tags_kwargs)
 
-    default_handle_able_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', tags=tags, where='')
-    if handle_able_kwargs:
-        handle_able_kwargs = {
-            **default_handle_able_kwargs,
-            **handle_able_kwargs,
+    default_handleable_kwargs = dict(default_timestamp=datetime.datetime.utcnow(), raw='', tags=tags, where='')
+    if handleable_kwargs:
+        handleable_kwargs = {
+            **default_handleable_kwargs,
+            **handleable_kwargs,
         }
     else:
-        handle_able_kwargs = default_handle_able_kwargs
-    return RoomState(**handle_able_kwargs)
+        handleable_kwargs = default_handleable_kwargs
+    return RoomState(**handleable_kwargs)

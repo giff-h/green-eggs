@@ -1,7 +1,12 @@
 import datetime
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Pattern, Tuple, Type
 
-class BaseTags:
+class DatabaseTranslatable:
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable: ...
+    def model_data(self) -> Dict[str, Any]: ...
+
+class BaseTags(DatabaseTranslatable):
     deprecated_fields: ClassVar[List[str]]
     pair_list_splitter: ClassVar[str]
     key_value_splitter: ClassVar[str]
@@ -9,10 +14,9 @@ class BaseTags:
     unhandled: Dict[str, str]
     raw: str
     @classmethod
-    def from_raw_data(cls, data: str): ...
+    def from_raw_data(cls, data: str) -> BaseTags: ...
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
-    def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, deprecated, unhandled, raw) -> None: ...
 
 class BaseBadges(BaseTags):
@@ -239,9 +243,12 @@ class Badges(BaseBadges):
     ) -> None: ...
 
 class UserBaseTags(BaseTags):
+    badges_db_prefix: ClassVar[str]
     badges: Badges
     color: str
     display_name: str
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable: ...
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def model_data(self) -> Dict[str, Any]: ...
@@ -255,7 +262,10 @@ class BadgeInfo(BaseBadges):
     def __init__(self, deprecated, unhandled, raw, founder, subscriber, predictions) -> None: ...
 
 class UserChatBaseTags(UserBaseTags):
+    badge_info_db_prefix: ClassVar[str]
     badge_info: BadgeInfo
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable: ...
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def model_data(self) -> Dict[str, Any]: ...
@@ -379,17 +389,17 @@ class PrivMsgTags(UserChatMessageBaseTags):
 
 class RoomStateTags(BaseTags):
     converter_mapping: ClassVar[List[Tuple[Callable[[str], Any], List[str]]]]
+    room_id: str
     emote_only: Optional[bool]
     followers_only: Optional[int]
     r9k: Optional[bool]
     rituals: Optional[bool]
-    room_id: str
     slow: Optional[int]
     subs_only: Optional[bool]
     @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def __init__(
-        self, deprecated, unhandled, raw, emote_only, followers_only, r9k, rituals, room_id, slow, subs_only
+        self, deprecated, unhandled, raw, room_id, emote_only, followers_only, r9k, rituals, slow, subs_only
     ) -> None: ...
 
 class UserNoticeMessageParams(BaseTags):
@@ -497,6 +507,8 @@ class UserNoticeTags(UserChatMessageBaseTags, UserSentNoticeBaseTags):
     system_msg: str
     msg_params: UserNoticeMessageParams
     @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable: ...
+    @classmethod
     def prepare_data(cls, **kwargs) -> Dict[str, Any]: ...
     def model_data(self) -> Dict[str, Any]: ...
     def __init__(
@@ -533,13 +545,12 @@ class WhisperTags(UserMessageBaseTags):
         self, deprecated, unhandled, raw, badges, color, display_name, emotes, user_id, message_id, thread_id
     ) -> None: ...
 
-class HandleAble:
+class HandleAble(DatabaseTranslatable):
     default_timestamp: datetime.datetime
     raw: str
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
     def as_original_match_dict(self) -> Dict[str, Any]: ...
-    def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, default_timestamp, raw) -> None: ...
 
 class FromUser(HandleAble):
@@ -555,9 +566,13 @@ class HasMessage(HandleAble):
     def __init__(self, default_timestamp, raw, message) -> None: ...
 
 class HasTags(HandleAble):
+    tags_db_prefix: ClassVar[str]
     tags: BaseTags
     @classmethod
     def from_match_dict(cls, **kwargs) -> HandleAble: ...
+    @classmethod
+    def from_model_data(cls, **kwargs) -> DatabaseTranslatable: ...
+    def model_data(self) -> Dict[str, Any]: ...
     def __init__(self, default_timestamp, raw, tags) -> None: ...
 
 class InChannel(HandleAble):

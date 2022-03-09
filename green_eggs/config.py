@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 import enum
 import re
@@ -91,11 +93,9 @@ class Config:
                     raise ValueError(message)
 
     @classmethod
-    def from_python(cls, **kwargs) -> 'Config':
+    def from_python(cls, **kwargs) -> Config:
         cls.validate_config(kwargs)
-
-        config = cls(**kwargs)
-        return config
+        return cls(**kwargs)
 
     def does_link_pass_conditions(self, link: str) -> bool:
         """

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import abc
 from collections.abc import Hashable
 from typing import Iterable, Iterator, List
@@ -10,16 +12,16 @@ from green_eggs.data_types import PrivMsg
 
 
 class CommandTrigger(Hashable, abc.ABC):
-    def __and__(self, other: 'CommandTrigger') -> 'AndTrigger':
+    def __and__(self, other: CommandTrigger) -> AndTrigger:
         return AndTrigger(self, other)
 
     def __eq__(self, other) -> bool:
         return type(self) is type(other) and hash(self) == hash(other)
 
-    def __invert__(self) -> 'CommandTrigger':
+    def __invert__(self) -> CommandTrigger:
         return InvertedTrigger(self)
 
-    def __or__(self, other: 'CommandTrigger') -> 'OrTrigger':
+    def __or__(self, other: CommandTrigger) -> OrTrigger:
         return OrTrigger(self, other)
 
     @abc.abstractmethod

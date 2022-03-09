@@ -48,19 +48,19 @@ def test_trigger_inequality():
 
 async def test_first_word_trigger(channel: Channel):
     trigger = FirstWordTrigger('one')
-    message = priv_msg(handle_able_kwargs=dict(message='one two'))
+    message = priv_msg(handleable_kwargs=dict(message='one two'))
     assert await trigger.check(message, channel)
 
 
 async def test_first_word_trigger_case_sensitive(channel: Channel):
     trigger = FirstWordTrigger('One', case_sensitive=True)
-    message = priv_msg(handle_able_kwargs=dict(message='one two'))
+    message = priv_msg(handleable_kwargs=dict(message='one two'))
     assert not await trigger.check(message, channel)
 
 
 async def test_first_word_trigger_case_insensitive(channel: Channel):
     trigger = FirstWordTrigger('One', case_sensitive=False)
-    message = priv_msg(handle_able_kwargs=dict(message='one two'))
+    message = priv_msg(handleable_kwargs=dict(message='one two'))
     assert await trigger.check(message, channel)
 
 
@@ -95,7 +95,7 @@ async def test_mod_trigger_normal(api_common: TwitchApiCommon, channel: Channel)
 async def test_sub_trigger(channel: Channel):
     trigger = SenderIsSubscribedTrigger()
     message = priv_msg(
-        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(badges_kwargs=dict(subscriber='1'))
+        handleable_kwargs=dict(where='channel_user'), tags_kwargs=dict(badges_kwargs=dict(subscriber='1'))
     )
     channel.handle_message(message)
     assert await trigger.check(message, channel)
@@ -145,7 +145,7 @@ def test_and_trigger_nested():
 
 async def test_and_trigger_check(channel: Channel):
     trigger = FirstWordTrigger('a') & SenderIsModTrigger()
-    message = priv_msg(handle_able_kwargs=dict(message='a'), tags_kwargs=dict(mod=True))
+    message = priv_msg(handleable_kwargs=dict(message='a'), tags_kwargs=dict(mod=True))
     assert await trigger.check(message, channel)
 
 
@@ -189,10 +189,10 @@ def test_or_trigger_nested():
 
 async def test_or_trigger_check(channel: Channel):
     a_not_mod = priv_msg(
-        handle_able_kwargs=dict(message='a', where='channel_user'), tags_kwargs=dict(user_id='not-a-mod')
+        handleable_kwargs=dict(message='a', where='channel_user'), tags_kwargs=dict(user_id='not-a-mod')
     )
     b_is_mod = priv_msg(
-        handle_able_kwargs=dict(message='b', where='channel_user'),
+        handleable_kwargs=dict(message='b', where='channel_user'),
         tags_kwargs=dict(badges_kwargs=dict(moderator='1'), mod=True, user_id='mod-id'),
     )
     channel.handle_message(a_not_mod)
@@ -211,10 +211,10 @@ async def test_inverted_trigger_created_from_tilde():
 async def test_inverted_trigger_negates_outcome(channel: Channel):
     trigger = FirstWordTrigger('first')
     inverted = ~trigger
-    message_first = priv_msg(handle_able_kwargs=dict(message='first word', where='channel_user'))
+    message_first = priv_msg(handleable_kwargs=dict(message='first word', where='channel_user'))
     assert await trigger.check(message_first, channel)
     assert not await inverted.check(message_first, channel)
-    message_second = priv_msg(handle_able_kwargs=dict(message='second word', where='channel_user'))
+    message_second = priv_msg(handleable_kwargs=dict(message='second word', where='channel_user'))
     assert not await trigger.check(message_second, channel)
     assert await inverted.check(message_second, channel)
 
@@ -368,7 +368,7 @@ async def test_registry_all(channel: Channel):
     registry[FirstWordTrigger('one')] = CommandRunner(_command_one, global_cooldown=None, user_cooldown=None)
     registry[FirstWordTrigger('two')] = CommandRunner(_command_two, global_cooldown=None, user_cooldown=None)
     registry[SenderIsModTrigger()] = CommandRunner(_command_three, global_cooldown=None, user_cooldown=None)
-    commands = await registry.all(priv_msg(handle_able_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)), channel)
+    commands = await registry.all(priv_msg(handleable_kwargs=dict(message='one'), tags_kwargs=dict(mod=True)), channel)
     assert [r._command_func for r in commands] == [_command_one, _command_three]
 
 
@@ -498,7 +498,7 @@ async def test_registry_decorator_async_with_factory(api_common: TwitchApiCommon
     runner = registry[AndTrigger()]
     assert 'api' not in runner._func_keywords
     assert 'message' in runner._func_keywords
-    message_ = priv_msg(handle_able_kwargs=dict(message='1'))
+    message_ = priv_msg(handleable_kwargs=dict(message='1'))
     run_result = await registry[AndTrigger()].run(api=api_common, channel=channel, message=message_)
     assert run_result == '12'
 
@@ -518,7 +518,7 @@ async def test_registry_find(channel: Channel):
     registry[FirstWordTrigger('four')] = CommandRunner(_two, global_cooldown=None, user_cooldown=None)
     registry[SenderIsModTrigger()] = CommandRunner(_three, global_cooldown=None, user_cooldown=None)
     command = await registry.find(
-        priv_msg(handle_able_kwargs=dict(message='three'), tags_kwargs=dict(mod=True)), channel
+        priv_msg(handleable_kwargs=dict(message='three'), tags_kwargs=dict(mod=True)), channel
     )
     assert command is not None
     assert command._command_func is _one

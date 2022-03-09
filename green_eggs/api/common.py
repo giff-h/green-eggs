@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Dict, Optional, Type
@@ -53,7 +55,7 @@ class TwitchApiCommon:
     def direct(self) -> TwitchApiDirect:
         return self._api
 
-    async def __aenter__(self) -> 'TwitchApiCommon':
+    async def __aenter__(self) -> TwitchApiCommon:
         self._api = await self._api.__aenter__()
         return self
 

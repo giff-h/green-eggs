@@ -386,7 +386,7 @@ async def test_permit_adds_permit_for_user(api_common: TwitchApiCommon, channel:
     assert len(bot._commands) == 1
     command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
     message = priv_msg(
-        handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
+        handleable_kwargs=dict(message='!permit @GoodUser', who='sender'),
         tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
@@ -403,7 +403,7 @@ async def test_permit_does_nothing_with_existing_permit(api_common: TwitchApiCom
     command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
     channel._permit_cache['gooduser'] = asyncio.create_task(permit_task())
     message = priv_msg(
-        handle_able_kwargs=dict(message='!permit @GoodUser', who='sender'),
+        handleable_kwargs=dict(message='!permit @GoodUser', who='sender'),
         tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
@@ -416,7 +416,7 @@ async def test_permit_with_no_user_does_nothing(api_common: TwitchApiCommon, cha
     assert len(bot._commands) == 1
     command = bot._commands[FirstWordTrigger('!permit') & SenderIsModTrigger()]
     message = priv_msg(
-        handle_able_kwargs=dict(message='!permit ', who='sender'),
+        handleable_kwargs=dict(message='!permit ', who='sender'),
         tags_kwargs=dict(badges_kwargs=dict(moderator='1'), display_name='Sender', mod=True),
     )
     result = await command.run(api=api_common, channel=channel, message=message)
@@ -431,7 +431,7 @@ async def test_register_basic(api_common: TwitchApiCommon, channel: Channel):
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!command'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!command'))
     )
     assert result == 'Response message'
 
@@ -442,16 +442,12 @@ async def test_register_basic_many(api_common: TwitchApiCommon, channel: Channel
     trigger = FirstWordTrigger('!one')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!one'))
-    )
+    result = await runner.run(api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!one')))
     assert result == 'Response One'
     trigger = FirstWordTrigger('!two')
     assert trigger in bot._commands
     runner = bot._commands[trigger]
-    result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!two'))
-    )
+    result = await runner.run(api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!two')))
     assert result == 'Second Response'
 
 
@@ -466,7 +462,7 @@ async def test_register_caster_with_no_name(api_common: TwitchApiCommon, channel
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!caster'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!caster'))
     )
     assert result == 'No name was given'
 
@@ -474,7 +470,7 @@ async def test_register_caster_with_no_name(api_common: TwitchApiCommon, channel
 async def test_register_caster_with_prior_message(api_common: TwitchApiCommon, channel: Channel, mocker: MockerFixture):
     channel.handle_message(
         priv_msg(
-            handle_able_kwargs=dict(where='channel_user', who='streamer'), tags_kwargs=dict(display_name='Streamer')
+            handleable_kwargs=dict(where='channel_user', who='streamer'), tags_kwargs=dict(display_name='Streamer')
         )
     )
 
@@ -506,7 +502,7 @@ async def test_register_caster_with_prior_message(api_common: TwitchApiCommon, c
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!so streamer'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!so streamer'))
     )
     assert result == 'User Streamer was playing The Best Game Ever at https://twitch.tv/streamer'
     api_common.direct.get_channel_information.assert_called_once_with(broadcaster_id='1')  # type: ignore[attr-defined]
@@ -554,7 +550,7 @@ async def test_register_caster_without_prior_message(
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!shoutout @Other_Streamer'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!shoutout @Other_Streamer'))
     )
     assert (
         result == 'User Other_Streamer was found playing The Other Best Game Ever at '
@@ -578,7 +574,7 @@ async def test_register_caster_no_user_found(api_common: TwitchApiCommon, channe
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!nope whoever'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!nope whoever'))
     )
     assert result == 'Could not find data for whoever'
 
@@ -594,6 +590,6 @@ async def test_register_command(api_common: TwitchApiCommon, channel: Channel):
     assert trigger in bot._commands
     runner = bot._commands[trigger]
     result = await runner.run(
-        api=api_common, channel=channel, message=priv_msg(handle_able_kwargs=dict(message='!hello'))
+        api=api_common, channel=channel, message=priv_msg(handleable_kwargs=dict(message='!hello'))
     )
     assert result == 'World'

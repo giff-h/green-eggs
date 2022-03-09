@@ -31,52 +31,52 @@ async def _main_handler(
     raw: str,
     default_timestamp: datetime.datetime,
 ) -> Optional[dt.HandleAble]:
-    handle_able: Optional[dt.HandleAble] = None
+    handleable: Optional[dt.HandleAble] = None
 
     for handle_type, pattern in dt.patterns.items():
         found = pattern.match(raw)
         if found is not None:
-            handle_able = handle_type.from_match_dict(default_timestamp=default_timestamp, raw=raw, **found.groupdict())
+            handleable = handle_type.from_match_dict(default_timestamp=default_timestamp, raw=raw, **found.groupdict())
             break
 
-    if handle_able is None:
+    if handleable is None:
         logger.warning(f'Incoming message could not be parsed: {raw!r}')
         return None
 
-    if isinstance(handle_able, dt.HasTags):
-        if handle_able.tags.unhandled:
-            type_name = type(handle_able).__qualname__
-            unhandled = handle_able.tags.unhandled
+    if isinstance(handleable, dt.HasTags):
+        if handleable.tags.unhandled:
+            type_name = type(handleable).__qualname__
+            unhandled = handleable.tags.unhandled
             logger.warning(f'Unhandled tags on {type_name}: {unhandled!r}')
-        if isinstance(handle_able.tags, dt.UserNoticeTags):
-            if handle_able.tags.msg_params.unhandled:
-                type_name = type(handle_able).__qualname__
-                unhandled = handle_able.tags.msg_params.unhandled
+        if isinstance(handleable.tags, dt.UserNoticeTags):
+            if handleable.tags.msg_params.unhandled:
+                type_name = type(handleable).__qualname__
+                unhandled = handleable.tags.msg_params.unhandled
                 logger.warning(f'Unhandled msg params on {type_name}: {unhandled!r}')
-        if isinstance(handle_able.tags, dt.UserBaseTags):
-            if handle_able.tags.badges.unhandled:
-                type_name = type(handle_able).__qualname__
-                unhandled = handle_able.tags.badges.unhandled
+        if isinstance(handleable.tags, dt.UserBaseTags):
+            if handleable.tags.badges.unhandled:
+                type_name = type(handleable).__qualname__
+                unhandled = handleable.tags.badges.unhandled
                 logger.warning(f'Unhandled badges on {type_name}: {unhandled!r}')
-        if isinstance(handle_able.tags, dt.UserChatBaseTags):
-            if handle_able.tags.badge_info.unhandled:
-                type_name = type(handle_able).__qualname__
-                unhandled = handle_able.tags.badge_info.unhandled
+        if isinstance(handleable.tags, dt.UserChatBaseTags):
+            if handleable.tags.badge_info.unhandled:
+                type_name = type(handleable).__qualname__
+                unhandled = handleable.tags.badge_info.unhandled
                 logger.warning(f'Unhandled badge info on {type_name}: {unhandled!r}')
 
-    if isinstance(handle_able, dt.PrivMsg):
-        channel.handle_message(handle_able)
-        if not await channel.check_for_links(handle_able):
-            command = await commands.find(handle_able, channel)
+    if isinstance(handleable, dt.PrivMsg):
+        channel.handle_message(handleable)
+        if not await channel.check_for_links(handleable):
+            command = await commands.find(handleable, channel)
             if command is not None:
                 try:
-                    result = await command.run(api=api, channel=channel, message=handle_able)
+                    result = await command.run(api=api, channel=channel, message=handleable)
                 except CooldownNotElapsed as e:
                     if config.should_notify_if_cooldown_has_not_elapsed:
                         remaining = f'{e.remaining:.1f}'.rstrip('0').rstrip('.')
                         plural = '' if remaining == '1' else 's'
                         response = (
-                            f'@{handle_able.tags.display_name} - '
+                            f'@{handleable.tags.display_name} - '
                             f'That command is on cooldown for {remaining} more second{plural}'
                         )
                         await channel.send(response)
@@ -84,40 +84,40 @@ async def _main_handler(
                     if isinstance(result, str):
                         await channel.send(result)
 
-    elif isinstance(handle_able, dt.JoinPart):
-        channel.handle_join_part(handle_able)
+    elif isinstance(handleable, dt.JoinPart):
+        channel.handle_join_part(handleable)
 
-    elif isinstance(handle_able, dt.ClearChat):
+    elif isinstance(handleable, dt.ClearChat):
         pass
 
-    elif isinstance(handle_able, dt.UserNotice):
+    elif isinstance(handleable, dt.UserNotice):
         pass
 
-    elif isinstance(handle_able, dt.RoomState):
-        channel.handle_room_state(handle_able)
+    elif isinstance(handleable, dt.RoomState):
+        channel.handle_room_state(handleable)
 
-    elif isinstance(handle_able, dt.UserState):
+    elif isinstance(handleable, dt.UserState):
         pass
 
-    elif isinstance(handle_able, dt.ClearMsg):
+    elif isinstance(handleable, dt.ClearMsg):
         pass
 
-    elif isinstance(handle_able, dt.Notice):
+    elif isinstance(handleable, dt.Notice):
         pass
 
-    elif isinstance(handle_able, dt.HostTarget):
+    elif isinstance(handleable, dt.HostTarget):
         pass
 
-    elif isinstance(handle_able, dt.Code353):
-        channel.handle_code_353(handle_able)
+    elif isinstance(handleable, dt.Code353):
+        channel.handle_code_353(handleable)
 
-    elif isinstance(handle_able, dt.Code366):
+    elif isinstance(handleable, dt.Code366):
         pass
 
-    elif isinstance(handle_able, dt.Whisper):
+    elif isinstance(handleable, dt.Whisper):
         pass
 
-    return handle_able
+    return handleable
 
 
 class ChatBot:

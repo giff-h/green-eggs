@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 from types import TracebackType
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 from urllib.parse import urlencode
@@ -64,7 +66,7 @@ class TwitchApiDirect:
 
         return response_data
 
-    async def __aenter__(self) -> 'TwitchApiDirect':
+    async def __aenter__(self) -> TwitchApiDirect:
         self._session = await self._session.__aenter__()
         return self
 

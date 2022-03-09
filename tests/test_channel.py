@@ -43,7 +43,7 @@ async def test_add_permit_for_user_fine_if_permit_cleared(channel: Channel):
 
 async def test_check_for_links_does_nothing_by_default(api_common: TwitchApiCommon, channel: Channel):
     assert not await channel.check_for_links(
-        priv_msg(handle_able_kwargs=dict(message='Go to youtube.com'), tags_kwargs=dict(id='message-with-link'))
+        priv_msg(handleable_kwargs=dict(message='Go to youtube.com'), tags_kwargs=dict(id='message-with-link'))
     )
     assert channel._chat._websocket._send_buffer.empty()  # type: ignore[union-attr]
     api_common.direct._session.request.assert_not_called()  # type: ignore[attr-defined]
@@ -58,7 +58,7 @@ async def test_check_for_links_deletes_message(api_common: TwitchApiCommon, chan
     channel._config.link_purge_action = LinkPurgeActions.DELETE
     assert await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com', who='sender'),
+            handleable_kwargs=dict(message='Go to youtube.com', who='sender'),
             tags_kwargs=dict(display_name='Sender', id='message-with-link'),
         )
     )
@@ -82,7 +82,7 @@ async def test_check_for_links_times_out_sender(api_common: TwitchApiCommon, cha
     channel._config.link_purge_action = LinkPurgeActions.TIMEOUT_FLAT
     assert await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com', who='sender'),
+            handleable_kwargs=dict(message='Go to youtube.com', who='sender'),
             tags_kwargs=dict(display_name='Sender', id='message-with-link'),
         )
     )
@@ -106,7 +106,7 @@ async def test_check_for_links_sends_no_message_after_if_blank(
     channel._config.link_purge_message_after_action = ''
     assert await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(display_name='Sender', id='message-with-link'),
         )
     )
@@ -130,7 +130,7 @@ async def test_check_for_links_allows_permitted(api_common: TwitchApiCommon, cha
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com', who='sender'),
+            handleable_kwargs=dict(message='Go to youtube.com', who='sender'),
             tags_kwargs=dict(display_name='Sender', id='message-with-link'),
         )
     )
@@ -155,14 +155,14 @@ async def test_check_for_links_allows_permitted_after_message_without_link(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='No link here', who='sender'),
+            handleable_kwargs=dict(message='No link here', who='sender'),
             tags_kwargs=dict(display_name='Sender', id='message-without-link'),
         )
     )
     assert 'sender' in channel._permit_cache
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com', who='sender'),
+            handleable_kwargs=dict(message='Go to youtube.com', who='sender'),
             tags_kwargs=dict(display_name='Sender', id='message-with-link'),
         )
     )
@@ -184,7 +184,7 @@ async def test_check_for_links_allows_vip_by_default(
     channel._config.should_purge_links = True
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(badges_kwargs=dict(vip='1'), id='message-with-link'),
         )
     )
@@ -208,7 +208,7 @@ async def test_check_for_links_allows_subscriber_if_told_to(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(
                 badge_info_kwargs=dict(subscriber='7'), badges_kwargs=dict(subscriber='2006'), id='message-with-link'
             ),
@@ -237,7 +237,7 @@ async def test_check_for_links_allows_subscriber_if_told_to_with_api(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(id='message-with-link', user_id='subbed-id'),
         )
     )
@@ -260,7 +260,7 @@ async def test_check_for_links_allows_subbed_vip_if_config_allows_sub_not_vip(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.USER_SUBSCRIBED
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(
                 badge_info_kwargs=dict(subscriber='1'),
                 badges_kwargs=dict(subscriber='1', vip='1'),
@@ -287,7 +287,7 @@ async def test_check_for_links_allows_subscriber_if_config_allows_subs_and_vip(
     )
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com now'),
+            handleable_kwargs=dict(message='Go to youtube.com now'),
             tags_kwargs=dict(
                 badge_info_kwargs=dict(subscriber='1'), badges_kwargs=dict(subscriber='1'), id='message-with-link'
             ),
@@ -313,7 +313,7 @@ async def test_check_for_links_deletes_vip_if_told_by_default(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(badges_kwargs=dict(vip='1'), id='message-with-link'),
         )
     )
@@ -333,7 +333,7 @@ async def test_check_for_links_allows_moderator_always(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(badges_kwargs=dict(moderator='1'), id='message-with-link', mod=True),
         )
     )
@@ -356,7 +356,7 @@ async def test_check_for_links_allows_moderator_checks_api(
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Go to youtube.com'),
+            handleable_kwargs=dict(message='Go to youtube.com'),
             tags_kwargs=dict(id='message-with-link', user_id='mod-id'),
         )
     )
@@ -375,7 +375,7 @@ async def test_check_for_links_allows_valid_link_format(
     channel._config.link_allow_target_conditions = [dict(domain='clips.twitch.tv')]
     assert not await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(message='Just clipped this https://clips.twitch.tv/ABCD-srao89esir2ua'),
+            handleable_kwargs=dict(message='Just clipped this https://clips.twitch.tv/ABCD-srao89esir2ua'),
             tags_kwargs=dict(id='message-with-link'),
         )
     )
@@ -396,7 +396,7 @@ async def test_check_for_links_unhandled_link_purge_action(
     channel._config.link_purge_action = 'THIS WILL NEVER BE A PURGE ACTION'  # type: ignore[assignment]
     channel._config.link_allow_user_condition = LinkAllowUserConditions.NOTHING
     with pytest.raises(ValueError, match='Unhandled link purge action: \'THIS WILL NEVER BE A PURGE ACTION\''):
-        await channel.check_for_links(priv_msg(handle_able_kwargs=dict(message='Go to youtube.com')))
+        await channel.check_for_links(priv_msg(handleable_kwargs=dict(message='Go to youtube.com')))
 
 
 async def test_check_for_links_allows_valid_link_format_and_purges_invalid(
@@ -411,7 +411,7 @@ async def test_check_for_links_allows_valid_link_format_and_purges_invalid(
     channel._config.link_allow_target_conditions = [dict(domain='clips.twitch.tv')]
     assert await channel.check_for_links(
         priv_msg(
-            handle_able_kwargs=dict(
+            handleable_kwargs=dict(
                 message='Just clipped this https://clips.twitch.tv/ABCD-sNCuhds4g403 gonna upload it to youtube.com',
                 who='sender',
             ),
@@ -465,7 +465,7 @@ def test_join_part_wrong_channel(channel: Channel):
 
 def test_message(channel: Channel):
     message = priv_msg(
-        handle_able_kwargs=dict(where='channel_user', who='message_sender'), tags_kwargs=dict(user_id='123')
+        handleable_kwargs=dict(where='channel_user', who='message_sender'), tags_kwargs=dict(user_id='123')
     )
     channel.handle_message(message)
     assert channel._users_in_channel_tmp == {'message_sender'}
@@ -475,7 +475,7 @@ def test_message(channel: Channel):
 
 def test_message_max_five(channel: Channel):
     message = priv_msg(
-        handle_able_kwargs=dict(where='channel_user', who='message_sender'), tags_kwargs=dict(user_id='123')
+        handleable_kwargs=dict(where='channel_user', who='message_sender'), tags_kwargs=dict(user_id='123')
     )
     for _ in range(6):
         channel.handle_message(message)
@@ -484,19 +484,17 @@ def test_message_max_five(channel: Channel):
 
 def test_message_wrong_channel(channel: Channel):
     with pytest.raises(ValueError, match='Channel for channel_user was given a message from wrong_channel'):
-        channel.handle_message(priv_msg(handle_able_kwargs=dict(where='wrong_channel')))
+        channel.handle_message(priv_msg(handleable_kwargs=dict(where='wrong_channel')))
 
 
 def test_room_state(channel: Channel):
-    channel.handle_room_state(
-        room_state(handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(room_id='123'))
-    )
+    channel.handle_room_state(room_state(handleable_kwargs=dict(where='channel_user'), tags_kwargs=dict(room_id='123')))
     assert channel.broadcaster_id == '123'
 
 
 def test_room_state_wrong_channel(channel: Channel):
     with pytest.raises(ValueError, match='Channel for channel_user was given a room state from wrong_channel'):
-        channel.handle_room_state(room_state(handle_able_kwargs=dict(where='wrong_channel')))
+        channel.handle_room_state(room_state(handleable_kwargs=dict(where='wrong_channel')))
     assert channel.broadcaster_id == ''
 
 
@@ -510,9 +508,7 @@ def test_is_user_in_channel(channel: Channel):
 
 
 async def test_is_user_moderator_true_with_broadcaster_id(api_common: TwitchApiCommon, channel: Channel):
-    channel.handle_room_state(
-        room_state(handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(room_id='123'))
-    )
+    channel.handle_room_state(room_state(handleable_kwargs=dict(where='channel_user'), tags_kwargs=dict(room_id='123')))
     result = await channel.is_user_moderator('123')
     assert result
     api_common.direct._session.request.assert_not_called()  # type: ignore[attr-defined]
@@ -521,7 +517,7 @@ async def test_is_user_moderator_true_with_broadcaster_id(api_common: TwitchApiC
 async def test_is_user_moderator_true_if_they_sent_moderator_messages(api_common: TwitchApiCommon, channel: Channel):
     channel.handle_message(
         priv_msg(
-            handle_able_kwargs=dict(message='Hi', where='channel_user'),
+            handleable_kwargs=dict(message='Hi', where='channel_user'),
             tags_kwargs=dict(badges_kwargs=dict(moderator='1'), mod=True, user_id='mod-id'),
         )
     )
@@ -548,7 +544,7 @@ async def test_is_user_moderator_false_if_they_sent_non_moderator_messages(
     api_common: TwitchApiCommon, channel: Channel
 ):
     channel.handle_message(
-        priv_msg(handle_able_kwargs=dict(message='Hi', where='channel_user'), tags_kwargs=dict(user_id='not-mod-id'))
+        priv_msg(handleable_kwargs=dict(message='Hi', where='channel_user'), tags_kwargs=dict(user_id='not-mod-id'))
     )
     result = await channel.is_user_moderator('not-mod-id')
     assert not result
@@ -571,11 +567,11 @@ async def test_is_user_moderator_false_if_the_api_says_so(
 
 async def test_is_user_subscribed_with_messages(channel: Channel):
     message_subscribed = priv_msg(
-        handle_able_kwargs=dict(where='channel_user'),
+        handleable_kwargs=dict(where='channel_user'),
         tags_kwargs=dict(user_id='123', badges_kwargs=dict(subscriber='1')),
     )
     message_not_subscribed = priv_msg(
-        handle_able_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges_kwargs=dict())
+        handleable_kwargs=dict(where='channel_user'), tags_kwargs=dict(user_id='123', badges_kwargs=dict())
     )
     channel.handle_message(message_subscribed)
     channel.handle_message(message_not_subscribed)
@@ -617,7 +613,7 @@ async def test_is_user_subscribed_with_cache(channel: Channel):
 def test_is_user_vip_true_if_they_sent_vip_messages(channel: Channel):
     channel.handle_message(
         priv_msg(
-            handle_able_kwargs=dict(message='Hi', where='channel_user'),
+            handleable_kwargs=dict(message='Hi', where='channel_user'),
             tags_kwargs=dict(badges_kwargs=dict(vip='1'), user_id='vip-id'),
         )
     )
@@ -632,23 +628,23 @@ def test_is_user_vip_false_if_they_sent_no_messages(channel: Channel):
 
 def test_is_user_vip_false_if_they_sent_non_vip_messages(channel: Channel):
     channel.handle_message(
-        priv_msg(handle_able_kwargs=dict(message='Hi', where='channel_user'), tags_kwargs=dict(user_id='not-vip-id'))
+        priv_msg(handleable_kwargs=dict(message='Hi', where='channel_user'), tags_kwargs=dict(user_id='not-vip-id'))
     )
     result = channel.is_user_vip('not-vip-id')
     assert not result
 
 
 def test_user_latest_message_none(channel: Channel):
-    channel.handle_message(priv_msg(handle_able_kwargs=dict(where='channel_user', who='other_user')))
+    channel.handle_message(priv_msg(handleable_kwargs=dict(where='channel_user', who='other_user')))
     assert channel.user_latest_message('login') is None
 
 
 def test_user_latest_message_login(channel: Channel):
     channel.handle_message(
-        priv_msg(handle_able_kwargs=dict(where='channel_user', who='user_login', message='message one'))
+        priv_msg(handleable_kwargs=dict(where='channel_user', who='user_login', message='message one'))
     )
     channel.handle_message(
-        priv_msg(handle_able_kwargs=dict(where='channel_user', who='user_login', message='message two'))
+        priv_msg(handleable_kwargs=dict(where='channel_user', who='user_login', message='message two'))
     )
     result = channel.user_latest_message('User_Login')
     assert result is not None
@@ -658,13 +654,13 @@ def test_user_latest_message_login(channel: Channel):
 def test_user_latest_message_display(channel: Channel):
     channel.handle_message(
         priv_msg(
-            handle_able_kwargs=dict(where='channel_user', message='message one'),
+            handleable_kwargs=dict(where='channel_user', message='message one'),
             tags_kwargs=dict(display_name='User_Login'),
         )
     )
     channel.handle_message(
         priv_msg(
-            handle_able_kwargs=dict(where='channel_user', message='message two'),
+            handleable_kwargs=dict(where='channel_user', message='message two'),
             tags_kwargs=dict(display_name='User_Login'),
         )
     )
