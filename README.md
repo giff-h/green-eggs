@@ -1,8 +1,8 @@
 # Green Eggs
 
-[![License](https://img.shields.io/github/license/hamstap85/green-eggs)](https://github.com/hamstap85/green-eggs/blob/main/LICENSE)
-[![Coverage](https://codecov.io/gh/hamstap85/green-eggs/branch/main/graph/badge.svg?token=VOFL8BKSZZ)](https://codecov.io/gh/hamstap85/green-eggs)
-[![Tests](https://img.shields.io/github/workflow/status/hamstap85/green-eggs/Test%20Code?event=push&label=tests&logo=github)](https://github.com/hamstap85/green-eggs/actions/workflows/test-code.yml)
+[![License](https://img.shields.io/github/license/giff-h/green-eggs)](https://github.com/giff-h/green-eggs/blob/main/LICENSE)
+[![Coverage](https://codecov.io/gh/giff-h/green-eggs/branch/main/graph/badge.svg?token=VOFL8BKSZZ)](https://codecov.io/gh/giff-h/green-eggs)
+[![Tests](https://img.shields.io/github/workflow/status/giff-h/green-eggs/Test%20Code?event=push&label=tests&logo=github)](https://github.com/giff-h/green-eggs/actions/workflows/test-code.yml)
 [![Version](https://img.shields.io/pypi/v/green-eggs)](https://pypi.org/project/green-eggs/)
 [![Downloads](https://img.shields.io/pypi/dw/green-eggs)](https://pypi.org/project/green-eggs/)
 [![Supported Python](https://img.shields.io/pypi/pyversions/green-eggs?logo=python)](https://pypi.org/project/green-eggs/)
@@ -17,7 +17,7 @@ running indefinitely.
 
 ### Usage
 
-See [example.py](https://github.com/hamstap85/green-eggs/blob/main/example.py) for an example bot setup. That's all
+See [example.py](https://github.com/giff-h/green-eggs/blob/main/example.py) for an example bot setup. That's all
 there is for now, more in-depth documentation is coming soon.
 
 - `bot.register_basic_commands` is a function that takes a mapping of first word invoke to response strings.
@@ -50,3 +50,7 @@ there is for now, more in-depth documentation is coming soon.
 - API result caching to prevent rate limiting.
 - A suite of CLI options to quickly make API calls and database queries.
 - Webhooks for handling events that don't come through in chat, and better handling of events that do.
+
+### Known issues
+
+- The test matrix is failing on Windows on Python 3.8 and later.
