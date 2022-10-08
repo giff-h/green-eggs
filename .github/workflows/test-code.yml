@@ -32,6 +32,7 @@ jobs:
       - name: "Tests"
         run: poetry run pytest --cov-report=xml --cov=green_eggs tests
         timeout-minutes: 5
+        continue-on-error: ${{ matrix.os == 'windows-latest' && matrix.python-version != '3.7' }}
       - name: "Upload coverage report"
         uses: codecov/codecov-action@v2
         timeout-minutes: 5
