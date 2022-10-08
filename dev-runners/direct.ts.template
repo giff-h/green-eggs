@@ -1,0 +1,87 @@
+import { AxiosRequestConfig, AxiosResponse } from "axios";
+import Axios from "axios-observable";
+import { EMPTY, MonoTypeOperatorFunction, Observable, OperatorFunction, expand, last, reduce } from "rxjs";
+
+import * as t from "./types";
+
+const baseURL = "https://api.twitch.tv/helix";
+
+type RequestParams = Record<string, string | number | string[] | number[]>;
+
+// PAGINATION NOTE: do not reuse response config without specifying what values to reuse
+
+export class TwitchApiDirect {
+    private readonly _getHeaders: () => AxiosRequestConfig["headers"];
+
+    constructor(clientId: string, token: string) {
+        this._getHeaders = () => ({ "Client-ID": clientId, Authorization: `Bearer ${token}` });
+    }
+
+    private _serializeParams(params: RequestParams): string {
+        return Object.keys(params)
+            .filter((key) => typeof params[key] !== "undefined")
+            .map((key) => {
+                const value = params[key];
+                return Array.isArray(value) ? value.map((val) => `${key}=${val}`).join("&") : `${key}=${value}`;
+            })
+            .join("&");
+    }
+
+    private _makeRequest<TResponse>(config: Partial<AxiosRequestConfig>): Observable<AxiosResponse<TResponse>> {
+        const paramsSerializer = (params?: RequestParams) => (params ? this._serializeParams(params) : "");
+
+        return Axios.request({
+            ...config,
+            baseURL,
+            paramsSerializer,
+            headers: this._getHeaders(),
+        });
+    }
+
+    private _fetchRemainingPages<
+        TResponse extends (t.DataListResponse<TData> | t.DataObjectResponse<TData>) & (t.PaginatedCursorResponse | t.PaginatedFlatResponse),
+        TData extends object = object,
+    >(): MonoTypeOperatorFunction<AxiosResponse<TResponse>> {
+        return (source) => {
+            return source.pipe(
+                expand((page) => {
+                    const cursor = typeof page.data.pagination === "string" ? page.data.pagination : page.data.pagination?.cursor;
+                    return cursor && cursor.length !== 0
+                        ? this._makeRequest<TResponse>({ params: { ...(page.config.params ?? {}), after: cursor } })
+                        : EMPTY;
+                }),
+            );
+        };
+    }
+
+    aggregateRemainingPages<
+        TResponse extends t.DataListResponse<TData> & (t.PaginatedCursorResponse | t.PaginatedFlatResponse),
+        TData extends object = object,
+    >(): MonoTypeOperatorFunction<TResponse>;
+    aggregateRemainingPages<
+        TResponse extends t.DataObjectResponse<TData> & (t.PaginatedCursorResponse | t.PaginatedFlatResponse),
+        TData extends object = object,
+    >(reducer: (accumulated: TResponse, page: AxiosResponse<TResponse>) => TResponse): MonoTypeOperatorFunction<TResponse>;
+    aggregateRemainingPages<
+        TResponse extends (t.DataListResponse<TData> | t.DataObjectResponse<TData>) & (t.PaginatedCursorResponse | t.PaginatedFlatResponse),
+        TData extends object = object,
+    >(
+        reducer?: (accumulated: TResponse, page: AxiosResponse<TResponse>) => TResponse,
+    ): OperatorFunction<AxiosResponse<TResponse>, TResponse> {
+        return (source) => {
+            if (!reducer) {
+                reducer = (accumulated: TResponse, page: AxiosResponse<TResponse>) =>
+                    ({
+                        ...accumulated,
+                        data: [
+                            ...(accumulated.data as t.DataListResponse<TData>["data"]),
+                            ...(page.data.data as AxiosResponse<t.DataListResponse<TData>>["data"]["data"]),
+                        ],
+                    } as TResponse);
+            }
+
+            return source.pipe(this._fetchRemainingPages(), reduce(reducer, {} as TResponse), last());
+        };
+    }
+
+    // All code below is automatically generated
