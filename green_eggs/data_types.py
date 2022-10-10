@@ -881,6 +881,75 @@ class Whisper(HasMessage, HasTags, UserInChannel):
     tags: WhisperTags
 
 
+# Basic helpers
+
+
+@dataclass(frozen=True)
+class StampedData:
+    data: str
+    stamp: datetime.datetime
+
+
+@dataclass(frozen=True)
+class NormalizedUser:
+    user_id: str = ''
+    username: str = ''
+    display_name: str = ''
+
+    @classmethod
+    def from_code353(cls, code353: Code353) -> List['NormalizedUser']:
+        return [cls(username=user) for user in code353.users]
+
+    @classmethod
+    def from_joinpart(cls, joinpart: JoinPart) -> 'NormalizedUser':
+        return cls(username=joinpart.who)
+
+    @classmethod
+    def from_privmsg(cls, privmsg: PrivMsg) -> 'NormalizedUser':
+        return cls(user_id=privmsg.tags.user_id, username=privmsg.who, display_name=privmsg.tags.display_name)
+
+    def is_same_user(self, other: 'NormalizedUser') -> bool:
+        if self.user_id:
+            if self.user_id == other.user_id:
+                return True
+            if other.user_id:
+                return False
+
+        if self.username:
+            if self.username == other.username:
+                return True
+            if other.username:
+                return False
+
+        if self.display_name:
+            return self.display_name == other.display_name
+
+        # To get here, all fields have an empty value in either self or other, if both users
+        # are fully empty just assume they're the same so there's no duplication of empty objects
+        return self == other
+
+    def match_to_other(self, other: 'NormalizedUser') -> Optional['NormalizedUser']:
+        """
+        Compares this object to the given object.
+
+        If they are deemed to be the same user, returns an object with the most up-to-date information.
+
+        If they are deemed to not be the same user, returns None.
+        """
+        if not self.is_same_user(other):
+            return None
+
+        # For all fields:
+        # If either value is empty, the other one will suffice. If both are empty, the result will also be empty.
+        # If both values differ, the other user is presumed to be a newer value.
+        # If both values are the same, the priority doesn't matter.
+        return NormalizedUser(
+            user_id=other.user_id or self.user_id,
+            username=other.username or self.username,
+            display_name=other.display_name or self.display_name,
+        )
+
+
 patterns: Dict[Type[HandleAble], Pattern[str]] = {
     PrivMsg: const.PRIVMSG_PATTERN,
     JoinPart: const.JOIN_PART_PATTERN,
@@ -894,4 +963,19 @@ patterns: Dict[Type[HandleAble], Pattern[str]] = {
     Code353: const.CODE_353_PATTERN,
     Code366: const.CODE_366_PATTERN,
     Whisper: const.WHISPER_PATTERN,
+}
+
+pattern_mapping: Dict[Pattern[str], Type[HandleAble]] = {
+    const.PRIVMSG_PATTERN: PrivMsg,
+    const.JOIN_PART_PATTERN: JoinPart,
+    const.CLEARCHAT_PATTERN: ClearChat,
+    const.USERNOTICE_PATTERN: UserNotice,
+    const.ROOMSTATE_PATTERN: RoomState,
+    const.USERSTATE_PATTERN: UserState,
+    const.CLEARMSG_PATTERN: ClearMsg,
+    const.NOTICE_PATTERN: Notice,
+    const.HOSTTARGET_PATTERN: HostTarget,
+    const.CODE_353_PATTERN: Code353,
+    const.CODE_366_PATTERN: Code366,
+    const.WHISPER_PATTERN: Whisper,
 }

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import inspect
-from typing import Any, Awaitable, Callable, List
+from typing import Any, Awaitable, Callable, List, Optional, TypeVar
 
 from aiologger import Logger
 
+_T = TypeVar('_T')
 
-async def catch_all(_logger: Logger, func: Callable[..., Awaitable[Any]], *args, **kwargs) -> Any:
+
+async def catch_all(_logger: Logger, func: Callable[..., Awaitable[_T]], *args, **kwargs) -> Optional[_T]:
     """
     Wrap a coroutine function in a full try/except block so the exception can be logged.
 
@@ -22,6 +24,7 @@ async def catch_all(_logger: Logger, func: Callable[..., Awaitable[Any]], *args,
         return await func(*args, **kwargs)
     except Exception:
         _logger.exception(f'Error happened in <{func.__qualname__}>')
+    return None
 
 
 def validate_function_signature(func: Callable[..., Any], expected_keywords: List[str]) -> List[inspect.Parameter]:

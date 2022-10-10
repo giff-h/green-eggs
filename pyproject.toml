@@ -64,9 +64,10 @@ classifiers = [
 [tool.poetry.dependencies]
 aiohttp = {extras = ["speedups"], version = "^3.8.1"}
 aiologger = {extras = ["aiofiles"], version = "^0.7.0"}
-python = "^3.7"
-websockets = "^10.1"
 asyncstdlib = "^3.10.3"
+python = ">=3.7,<3.11"
+reactivex = "^4.0.0"
+websockets = "^10.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"

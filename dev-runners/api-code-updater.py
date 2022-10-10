@@ -20,6 +20,7 @@ parameter_triggers = [
     'Body Parameter',
     'Query Parameter',
     'Query Paramater',
+    'Request Parameter',
     'Body Value',
     'Request Body',
 ]
@@ -233,7 +234,7 @@ class EndpointFieldTable:
 
         self._header_row = [node_text(th) for th in table_trs[0]]
         type_column_index = self._header_row.index('Type')
-        if self._header_row[1] == 'Required':
+        if any(header_text.startswith('Required') for header_text in self._header_row):
             ordering = [
                 EndpointField.FIELD_NAME_ATTR,
                 EndpointField.REQUIRED_VALUE_ATTR,
@@ -247,11 +248,13 @@ class EndpointFieldTable:
         for body_row in table_trs[1:]:
             row_text = [node_text(td, do_strip=False) for td in body_row]
             field_name = row_text[0]
-            required_value = row_text[1] if is_parameter_requirement_in_table else ''
+            required_value = (
+                row_text[ordering.index(EndpointField.REQUIRED_VALUE_ATTR)] if is_parameter_requirement_in_table else ''
+            )
             field_type = row_text[type_column_index]
             description = row_text[-1]
             is_required = is_parameter_required_by_header or (
-                is_parameter_requirement_in_table and row_text[1].lower() == 'yes'
+                is_parameter_requirement_in_table and required_value.lower() == 'yes'
             )
             field = EndpointField(field_name, required_value, field_type, description, ordering, is_required)
             if '.' in field_name or field_name.replace('`', '').startswith(' '):
@@ -410,7 +413,7 @@ class EndpointFunction:
     @property
     def function_body(self) -> List[str]:
         code_lines = []
-        return_line = f'return await self._request({self._url_method.strip()!r}, {self._url_path!r}'
+        return_line = f'return self._request({self._url_method.strip()!r}, {self._url_path!r}'
 
         if self._url_params_tables:
             all_kwargs = []
@@ -437,7 +440,7 @@ class EndpointFunction:
 
     @property
     def function_code(self) -> List[str]:
-        def_line = f'async def {self.function_name}(self{self.function_parameters}):'
+        def_line = f'def {self.function_name}(self{self.function_parameters}) -> rx.Observable[Dict[str, Any]]:'
         return [def_line] + indent(self.function_docstring + self.function_body)
 
 
@@ -473,4 +476,5 @@ if __name__ == '__main__':
     full_file = template + '\n'.join(generated_lines) + '\n'
     for misspelled, corrected in spelling_fixes.items():
         full_file = full_file.replace(misspelled, corrected)
-    (this_dir.parent / 'green_eggs' / 'api' / 'direct.py').write_text(full_file)
+    api_file = this_dir.parent / 'green_eggs' / 'reactive' / 'api' / 'direct.py'
+    api_file.write_text(full_file)

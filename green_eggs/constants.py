@@ -23,7 +23,6 @@ CAP_ACK_PATTERN: Pattern[str] = re.compile(rf'^:{_tmi} CAP \* ACK :(?P<cap>(?:{_
 
 EXPECTED_JOIN_CODES: List[str] = ['353', '366']
 JOIN_EXPECT_PATTERN: Pattern[str] = re.compile(rf'^{_user_tmi} JOIN #(?P<joined>{_user})$')
-
 PART_EXPECT_PATTERN: Pattern[str] = re.compile(rf'^{_user_tmi} PART #(?P<left>{_user})$')
 
 RECONNECT_PATTERN: Pattern[str] = re.compile(rf'^:{_tmi} RECONNECT$')

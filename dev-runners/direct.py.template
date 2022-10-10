@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+import asyncio
 from types import TracebackType
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 from urllib.parse import urlencode
 
 import aiohttp
 from aiologger import Logger
+import reactivex as rx
 
 __all__ = ('TwitchApiDirect',)
 
@@ -22,47 +24,13 @@ def exclude_non_empty(**kwargs):
 
 
 class TwitchApiDirect:
-    _base_url = 'https://api.twitch.tv/helix/'
+    base_url: str = 'https://api.twitch.tv/helix/'
 
     def __init__(self, *, client_id: str, token: str, logger: Logger):
         token = token.lstrip('oauth:')
         headers = {'Client-ID': client_id, 'Authorization': f'Bearer {token}'}
         self._logger: Logger = logger
         self._session: aiohttp.ClientSession = aiohttp.ClientSession(headers=headers)
-
-    async def _request(
-        self,
-        method: str,
-        path: str,
-        *,
-        params: UrlParams = _empty,
-        data: Optional[Dict[str, Any]] = None,
-        raise_for_status: bool = True,
-    ) -> Any:
-        """
-        Executes a request on helix.
-
-        :param str method: The HTTP method
-        :param str path: The helix API path
-        :param params: The params for `urlencode`
-        :param data: The data for the request body
-        :param bool raise_for_status:
-        :return:
-        """
-        url = self._base_url + path
-        if params is not _empty and params:
-            if isinstance(params, Mapping):
-                params = {k: str(v).lower() if isinstance(v, bool) else v for k, v in params.items()}
-            url += f'?{urlencode(params, doseq=True)}'
-
-        self._logger.debug(f'Making {method} request to {url}')
-
-        async with self._session.request(method, url, json=data) as response:
-            if raise_for_status:
-                response.raise_for_status()
-            response_data = await response.json()
-
-        return response_data
 
     async def __aenter__(self) -> 'TwitchApiDirect':
         self._session = await self._session.__aenter__()
@@ -73,7 +41,55 @@ class TwitchApiDirect:
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
-    ):
+    ) -> None:
         await self._session.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def _make_request(self, *, method: str, url: str, data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Executes a request of the given method on the given url with the given body data.
+
+        On success, the response JSON is passed to the subject.
+        On error, the error is passed to the subject.
+        Either way, the subject completes immediately after.
+
+        :param str method: The HTTP method
+        :param str url: The URL to request
+        :param data: The optional body data of the request
+        :type data: dict or None
+        """
+        self._logger.debug(f'Making {method} request to {url}')
+
+        async with self._session.request(method, url, json=data) as response:
+            response.raise_for_status()
+            return await response.json()
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: UrlParams = _empty,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> rx.Observable[Dict[str, Any]]:
+        """
+        Creates a subject that emits and completes when the request completes.
+
+        :param str method: The HTTP method
+        :param str path: The helix API path
+        :param params: The params for `urlencode`
+        :param data: The data for the request body
+        :return: A subject that emits once with a dict then completes
+        :rtype: rx.Observable[Dict[str, Any]]
+        """
+        url = self.base_url + path
+        if params is not _empty and params:
+            if isinstance(params, Mapping):
+                params = {k: str(v).lower() if isinstance(v, bool) else v for k, v in params.items()}
+            url += f'?{urlencode(params, doseq=True)}'
+
+        task: 'asyncio.Future[Dict[str, Any]]' = asyncio.ensure_future(
+            self._make_request(method=method, url=url, data=data)
+        )
+        return rx.from_future(task)
 
     # API endpoint functions
