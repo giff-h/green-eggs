@@ -44,11 +44,11 @@ speedups = ["Brotli", "aiodns", "cchardet"]
 
 [[package]]
 name = "aiologger"
-version = "0.6.1"
+version = "0.7.0"
 description = "Asynchronous logging for python and asyncio"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 aiofiles = {version = "0.4.0", optional = true, markers = "extra == \"aiofiles\""}
@@ -843,7 +843,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "178ff4d95bd1b50c6eeab0e9966bba8cc73f320d31299451f0363b971553a74b"
+content-hash = "ad282a209a7433d1d744063f77eef42f2643d1261365c57ab4ffc0f34c7ebdd7"
 
 [metadata.files]
 aiodns = [
@@ -929,7 +929,7 @@ aiohttp = [
     {file = "aiohttp-3.8.1.tar.gz", hash = "sha256:fc5471e1a54de15ef71c1bc6ebe80d4dc681ea600e68bfd1cbce40427f0b7578"},
 ]
 aiologger = [
-    {file = "aiologger-0.6.1.tar.gz", hash = "sha256:1b6b8f00d74a588339b657ff60ffa9f64c53873887a008934c66e1a673ea68cd"},
+    {file = "aiologger-0.7.0.tar.gz", hash = "sha256:7a4d5c91b836b61e842a791071786a3d80d6b6fa46fb8fd8e73391253ecb72ac"},
 ]
 aiosignal = [
     {file = "aiosignal-1.2.0-py3-none-any.whl", hash = "sha256:26e62109036cd181df6e6ad646f91f0dcfd05fe16d0cb924138ff2ab75d64e3a"},
