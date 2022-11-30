@@ -12,9 +12,9 @@ from green_eggs.utils import validate_function_signature as validate_function_si
 class CommandRunner:
     command_keywords: ClassVar[List[str]]
     def __init__(
-        self, command_func: RegisterAbleFunc, global_cooldown: Optional[int], user_cooldown: Optional[int]
+        self, command_func: RegisterAbleFunc, *, global_cooldown: Optional[int], user_cooldown: Optional[int]
     ) -> None: ...
-    async def run(self, api: TwitchApiCommon, channel: Channel, message: PrivMsg) -> Optional[str]: ...
+    async def run(self, *, api: TwitchApiCommon, channel: Channel, message: PrivMsg) -> Optional[str]: ...
 
 class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
     def __init__(self) -> None: ...
@@ -27,6 +27,7 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
         self,
         trigger: CommandTrigger,
         command_func: RegisterAbleFunc,
+        *,
         global_cooldown: Optional[int],
         user_cooldown: Optional[int],
     ): ...
@@ -34,9 +35,9 @@ class CommandRegistry(MutableMapping[CommandTrigger, CommandRunner]):
     def decorator(
         self,
         trigger: CommandTrigger,
+        *,
         global_cooldown: Optional[int],
         user_cooldown: Optional[int],
-        *,
         target_keywords: Optional[List[str]] = ...,
         command_factory: Optional[Callable[[RegisterAbleFunc, List[str]], RegisterAbleFunc]] = ...,
     ): ...

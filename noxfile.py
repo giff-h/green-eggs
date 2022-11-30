@@ -3,7 +3,7 @@ import itertools
 import operator
 import os
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import nox
 import nox_poetry
@@ -21,7 +21,9 @@ nox.sessions.SessionRunner._orig_friendly_name = nox.sessions.SessionRunner.frie
 nox.sessions.SessionRunner.friendly_name = property(friendly_name)  # type: ignore[assignment]
 
 
-def _get_latest_patch_of_minor_versions(*, oldest_minor: int = None, latest_minor: int = None) -> List[str]:
+def _get_latest_patch_of_minor_versions(
+    *, oldest_minor: Optional[int] = None, latest_minor: Optional[int] = None
+) -> List[str]:
     if oldest_minor is not None and latest_minor is not None and oldest_minor > latest_minor:
         raise ValueError(f'oldest_minor {oldest_minor} may not be greater than latest_minor {latest_minor}')
 

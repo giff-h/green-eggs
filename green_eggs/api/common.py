@@ -65,7 +65,9 @@ class TwitchApiCommon:
     ):
         await self._api.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def get_shoutout_info(self, *, username: str = None, user_id: str = None) -> Optional[ShoutoutInfo]:
+    async def get_shoutout_info(
+        self, *, username: Optional[str] = None, user_id: Optional[str] = None
+    ) -> Optional[ShoutoutInfo]:
         """
         Gets shoutout information for the given user, either by username or user ID.
 

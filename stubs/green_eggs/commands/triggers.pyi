@@ -1,6 +1,7 @@
 import abc
 from collections.abc import Hashable
-from typing import Any
+
+from _typeshed import Incomplete
 
 from green_eggs.channel import Channel as Channel
 from green_eggs.data_types import PrivMsg as PrivMsg
@@ -14,7 +15,7 @@ class CommandTrigger(Hashable, abc.ABC, metaclass=abc.ABCMeta):
     async def check(self, message: PrivMsg, channel: Channel) -> bool: ...
 
 class InvertedTrigger(CommandTrigger):
-    inner: Any
+    inner: Incomplete
     def __init__(self, inner: CommandTrigger) -> None: ...
     def __hash__(self) -> int: ...
     def __invert__(self) -> CommandTrigger: ...

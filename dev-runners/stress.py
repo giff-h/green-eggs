@@ -4,7 +4,7 @@ import collections
 import json
 from pathlib import Path
 import pprint
-from typing import Dict, Set, Type
+from typing import Dict, List, Set, Type
 
 import aiologger
 
@@ -37,7 +37,7 @@ unhandled_msg_params: Dict[Type[dt.HandleAble], Dict[str, Set[str]]] = collectio
 
 async def stress():
     logger = aiologger.Logger.with_default_handlers(name='stress')
-    logins = []
+    logins: List[str] = []
 
     async with TwitchApiDirect(client_id=client_id, token=token, logger=logger) as api:
         streams = await api.get_streams(first=20 - len(logins))

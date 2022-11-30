@@ -14,7 +14,7 @@ from green_eggs.types import RegisterAbleFunc as RegisterAbleFunc
 from green_eggs.utils import catch_all as catch_all
 
 class ChatBot:
-    def __init__(self, channel: str, *, config: Dict[str, Any] = ...) -> None: ...
+    def __init__(self, *, channel: str, config: Optional[Dict[str, Any]] = ...) -> None: ...
     def register_basic_commands(
         self,
         commands: Mapping[str, str],
@@ -39,7 +39,9 @@ class ChatBot:
         global_cooldown: Optional[int] = ...,
         user_cooldown: Optional[int] = ...,
     ): ...
-    def run_sync(self, chat_bot_username: str, chat_bot_token: str, *, api_client_id: str = ..., api_token: str): ...
+    def run_sync(
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: Optional[str] = ..., api_token: str
+    ): ...
     async def run_async(
-        self, chat_bot_username: str, chat_bot_token: str, *, api_client_id: str = ..., api_token: str
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: Optional[str] = ..., api_token: str
     ): ...

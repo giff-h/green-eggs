@@ -19,6 +19,7 @@ profile = "black"
 py_version = '3'
 
 [tool.mypy]
+check_untyped_defs = true
 exclude = "stubs/"
 show_error_codes = true
 

@@ -101,13 +101,13 @@ class TwitchChatClient:
         :raises Exception: from the websocket connect if any happened
         """
         try:
-            self._websocket = await websockets.connect(self.host)
+            self._websocket = await websockets.connect(self.host)  # type: ignore[attr-defined]
         except Exception as e:
             self.ws_exc = e
             self._logger.exception('Websocket connection failed')
             raise
 
-    async def expect(self, expectation: asyncio.Future, label: str, timeout: int = 5):
+    async def expect(self, expectation: asyncio.Future, label: str, timeout: Union[float, int] = 5):
         """
         Takes an `asyncio.Future` and expects it to resolve within `timeout` seconds.
 
@@ -318,7 +318,7 @@ class TwitchChatClient:
 
         return True
 
-    def queue_expectations(self, category: str, *parts: str, timeout: int = 5) -> List[asyncio.Task]:
+    def queue_expectations(self, category: str, *parts: str, timeout: Union[float, int] = 5) -> List[asyncio.Task]:
         """
         Tasks an expectation for each part of `parts` in the category, and puts the `asyncio.Future` in
         `self.expectations[category][part]`.

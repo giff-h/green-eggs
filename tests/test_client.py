@@ -13,7 +13,7 @@ from tests.fixtures import *  # noqa
 
 
 def none_future():
-    future = asyncio.Future()
+    future: 'asyncio.Future[None]' = asyncio.Future()
     future.set_result(None)
     return future
 
