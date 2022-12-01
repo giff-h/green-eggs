@@ -2,7 +2,7 @@
 import inspect
 import sys
 import time
-from typing import List
+from typing import Any, Dict, List
 
 import pytest
 
@@ -435,7 +435,7 @@ if sys.version_info[:2] >= (3, 8):
 def _command(a, /):
     return str(a)'''.strip()
         globals_ = dict(str=str)
-        locals_ = dict()
+        locals_: Dict[str, Any] = dict()
         exec(func, globals_, locals_)
         _command = locals_['_command']
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from inspect import Parameter
 import sys
+from typing import Any, Dict
 
 import pytest
 from pytest_mock import MockerFixture
@@ -38,7 +39,7 @@ if sys.version_info[:2] >= (3, 8):  # These test asserts a condition that only h
 def _invalid_function(a, b=1, /):
     return str(a) + str(b)'''.strip()
         globals_ = dict(str=str)
-        locals_ = dict()
+        locals_: Dict[str, Any] = dict()
         exec(func, globals_, locals_)
         _invalid_function = locals_['_invalid_function']
 
@@ -53,7 +54,7 @@ def _invalid_function(a, b=1, /):
 def _valid_function(a='0', b=1, /):
     return str(a) + str(b)'''.strip()
         globals_ = dict(str=str)
-        locals_ = dict()
+        locals_: Dict[str, Any] = dict()
         exec(func, globals_, locals_)
         _valid_function = locals_['_valid_function']
 

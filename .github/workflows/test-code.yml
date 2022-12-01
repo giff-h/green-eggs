@@ -28,10 +28,10 @@ jobs:
         timeout-minutes: 5
       - name: "Setup env"
         run: poetry install
-        timeout-minutes: 10
+        timeout-minutes: 15
       - name: "Tests"
         run: poetry run pytest --cov-report=xml --cov=green_eggs tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         continue-on-error: ${{ matrix.os == 'windows-latest' && matrix.python-version != '3.7' }}
       - name: "Upload coverage report"
         uses: codecov/codecov-action@v3

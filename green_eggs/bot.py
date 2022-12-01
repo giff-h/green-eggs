@@ -121,7 +121,7 @@ async def _main_handler(
 
 
 class ChatBot:
-    def __init__(self, *, channel: str, config: Dict[str, Any] = None):
+    def __init__(self, *, channel: str, config: Optional[Dict[str, Any]] = None):
         self._channel: str = channel
         self._commands = CommandRegistry()
         self._config = Config.from_python(**(config or dict()))
@@ -280,7 +280,7 @@ class ChatBot:
         return self._commands.decorator(trigger, global_cooldown=global_cooldown, user_cooldown=user_cooldown)
 
     def run_sync(
-        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: str = None, api_token: str
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: Optional[str] = None, api_token: str
     ):  # pragma: no cover
         """
         Main synchronous blocking function to run the bot after configuring.
@@ -310,7 +310,7 @@ class ChatBot:
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
     async def run_async(
-        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: str = None, api_token: str
+        self, *, chat_bot_username: str, chat_bot_token: str, api_client_id: Optional[str] = None, api_token: str
     ):  # pragma: no cover
         """
         Main async forever loop to run the bot after configuring.
