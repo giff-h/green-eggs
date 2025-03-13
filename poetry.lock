@@ -102,7 +102,7 @@ typing-extensions = {version = ">=3.6.5", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "asyncstdlib"
-version = "3.10.3"
+version = "3.12.0"
 description = "The missing async toolbox"
 category = "main"
 optional = false
@@ -949,8 +949,8 @@ async-timeout = [
     {file = "async_timeout-4.0.2-py3-none-any.whl", hash = "sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c"},
 ]
 asyncstdlib = [
-    {file = "asyncstdlib-3.10.3-py2.py3-none-any.whl", hash = "sha256:35d34eca050b847fe45cbb10a07a55c15ef1cb43e59d4abfcbdebe90df30a6f6"},
-    {file = "asyncstdlib-3.10.3.tar.gz", hash = "sha256:4d836c65769761a47795667ed72f3de6cf4a25e480959f75fd91eb8eb5edc640"},
+    {file = "asyncstdlib-3.12.0-py3-none-any.whl", hash = "sha256:68b8dc92d91193fe977825e2dc965b74ae6624d1994bcd5958aa7414ba9d4eaa"},
+    {file = "asyncstdlib-3.12.0.tar.gz", hash = "sha256:83d620553fea73ee924a986e69135bcacb655f6cdc6f2f9e67030a1e259d8be5"},
 ]
 asynctest = [
     {file = "asynctest-0.13.0-py3-none-any.whl", hash = "sha256:5da6118a7e6d6b54d83a8f7197769d046922a44d2a99c21382f0a6e4fadae676"},
