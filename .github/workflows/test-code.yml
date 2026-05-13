@@ -21,7 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
         timeout-minutes: 5
       - name: "Install poetry"
-        uses: abatilo/actions-poetry@v2.2.0
+        uses: abatilo/actions-poetry@v4.0.0
         timeout-minutes: 5
       - name: "Sanity check"
         run: poetry check
