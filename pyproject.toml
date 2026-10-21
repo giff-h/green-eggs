@@ -70,7 +70,7 @@ websockets = "^10.1"
 asyncstdlib = "^3.10.3"
 
 [tool.poetry.dev-dependencies]
-black = "^22.1.0"
+black = "^26.0.0"
 docformatter = "^1.4"
 ipython = "^7.31.1"
 isort = "^5.10.1"
